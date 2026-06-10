@@ -61,7 +61,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     // Snapshot per diem rate
     if (fields.costOfLivingArea) {
-      const rate = await prisma.perDiemRate.findUnique({ where: { area: fields.costOfLivingArea } });
+      const rate = await prisma.perDiemRate.findFirst({ where: { area: fields.costOfLivingArea } });
       if (rate) {
         toUpdate.perDiemUsdPerDay = rate.usdPerDay;
         const days = Number(fields.totalTripDays ?? 0);

@@ -44,7 +44,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   if (action === "SUBMIT") {
     if (fields.costOfLivingArea) {
-      const rate = await prisma.perDiemRate.findUnique({ where: { area: fields.costOfLivingArea } });
+      const rate = await prisma.perDiemRate.findFirst({ where: { area: fields.costOfLivingArea } });
       if (rate) {
         const usd = Number(fields.totalTripDays ?? 0) * Number(rate.usdPerDay);
         const thb = usd * Number(fields.botFxRate ?? 0);
