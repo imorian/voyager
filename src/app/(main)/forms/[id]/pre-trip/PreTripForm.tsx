@@ -183,14 +183,14 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
               onClick={() => setEntity("US")}
               className={`px-4 py-1.5 text-sm font-medium transition-colors ${entity === "US" ? "bg-blue-600 text-white" : "bg-white text-blue-700 hover:bg-blue-50"}`}
             >
-              🇺🇸 US Entity
+              🇺🇸 BGP Holding (US) LLC
             </button>
             <button
               type="button"
               onClick={() => setEntity("TH")}
               className={`px-4 py-1.5 text-sm font-medium transition-colors ${entity === "TH" ? "bg-blue-600 text-white" : "bg-white text-blue-700 hover:bg-blue-50"}`}
             >
-              🇹🇭 Thailand Entity
+              🇹🇭 B.Grimm Power PCL
             </button>
           </div>
           <span className="text-xs text-blue-600">

@@ -233,7 +233,33 @@ model PerDiemRate {
   city          String?
   state         String?
   country       String?           @default("US")
+  fiscalYear    Int?              @map("fiscal_year")      // e.g. 2026 (GSA Oct-Sep cycle)
+
+  // Lodging (GSA lodging cap, can vary by month)
+  lodgingJan    Decimal?          @map("lodging_jan")
+  lodgingFeb    Decimal?          @map("lodging_feb")
+  lodgingMar    Decimal?          @map("lodging_mar")
+  lodgingApr    Decimal?          @map("lodging_apr")
+  lodgingMay    Decimal?          @map("lodging_may")
+  lodgingJun    Decimal?          @map("lodging_jun")
+  lodgingJul    Decimal?          @map("lodging_jul")
+  lodgingAug    Decimal?          @map("lodging_aug")
+  lodgingSep    Decimal?          @map("lodging_sep")
+  lodgingOct    Decimal?          @map("lodging_oct")
+  lodgingNov    Decimal?          @map("lodging_nov")
+  lodgingDec    Decimal?          @map("lodging_dec")
+
+  // M&IE breakdown (fixed per city, not seasonal)
+  mieTotal      Decimal?          @map("mie_total")        // full day M&IE
+  mieFirstLast  Decimal?          @map("mie_first_last")   // 75% of mieTotal
+  mieBreakfast  Decimal?          @map("mie_breakfast")
+  mieLunch      Decimal?          @map("mie_lunch")
+  mieDinner     Decimal?          @map("mie_dinner")
+  mieIncidental Decimal?          @map("mie_incidental")
+
+  // Legacy / international field (kept for TH entity area-based rates)
   usdPerDay     Decimal           @map("usd_per_day")
+
   effectiveFrom DateTime          @map("effective_from")
   updatedBy     String?           @map("updated_by")
   updatedAt     DateTime          @updatedAt @map("updated_at")

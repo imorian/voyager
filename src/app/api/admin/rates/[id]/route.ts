@@ -16,14 +16,33 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const { usdPerDay, city, state, country } = await req.json();
+  const body = await req.json();
   const rate = await prisma.perDiemRate.update({
     where: { id },
     data: {
-      usdPerDay,
-      ...(city !== undefined && { city }),
-      ...(state !== undefined && { state }),
-      ...(country !== undefined && { country }),
+      ...(body.city !== undefined && { city: body.city }),
+      ...(body.state !== undefined && { state: body.state }),
+      ...(body.country !== undefined && { country: body.country }),
+      ...(body.usdPerDay !== undefined && { usdPerDay: body.usdPerDay }),
+      ...(body.fiscalYear !== undefined && { fiscalYear: body.fiscalYear }),
+      ...(body.mieTotal !== undefined && { mieTotal: body.mieTotal }),
+      ...(body.mieFirstLast !== undefined && { mieFirstLast: body.mieFirstLast }),
+      ...(body.mieBreakfast !== undefined && { mieBreakfast: body.mieBreakfast }),
+      ...(body.mieLunch !== undefined && { mieLunch: body.mieLunch }),
+      ...(body.mieDinner !== undefined && { mieDinner: body.mieDinner }),
+      ...(body.mieIncidental !== undefined && { mieIncidental: body.mieIncidental }),
+      ...(body.lodgingJan !== undefined && { lodgingJan: body.lodgingJan }),
+      ...(body.lodgingFeb !== undefined && { lodgingFeb: body.lodgingFeb }),
+      ...(body.lodgingMar !== undefined && { lodgingMar: body.lodgingMar }),
+      ...(body.lodgingApr !== undefined && { lodgingApr: body.lodgingApr }),
+      ...(body.lodgingMay !== undefined && { lodgingMay: body.lodgingMay }),
+      ...(body.lodgingJun !== undefined && { lodgingJun: body.lodgingJun }),
+      ...(body.lodgingJul !== undefined && { lodgingJul: body.lodgingJul }),
+      ...(body.lodgingAug !== undefined && { lodgingAug: body.lodgingAug }),
+      ...(body.lodgingSep !== undefined && { lodgingSep: body.lodgingSep }),
+      ...(body.lodgingOct !== undefined && { lodgingOct: body.lodgingOct }),
+      ...(body.lodgingNov !== undefined && { lodgingNov: body.lodgingNov }),
+      ...(body.lodgingDec !== undefined && { lodgingDec: body.lodgingDec }),
       effectiveFrom: new Date(),
       updatedBy: admin.id,
     },

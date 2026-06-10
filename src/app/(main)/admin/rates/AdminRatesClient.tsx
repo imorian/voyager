@@ -11,7 +11,20 @@ import { Edit, Plus, Trash2 } from "lucide-react";
 
 interface Props { rates: any[] }
 
-const EMPTY = { city: "", state: "", country: "US", usdPerDay: "" };
+const EMPTY = {
+  city: "", state: "", country: "US", fiscalYear: new Date().getFullYear(),
+  // Lodging by month
+  lodgingJan: "", lodgingFeb: "", lodgingMar: "", lodgingApr: "",
+  lodgingMay: "", lodgingJun: "", lodgingJul: "", lodgingAug: "",
+  lodgingSep: "", lodgingOct: "", lodgingNov: "", lodgingDec: "",
+  // M&IE
+  mieTotal: "", mieFirstLast: "", mieBreakfast: "", mieLunch: "", mieDinner: "", mieIncidental: "",
+  usdPerDay: "",
+};
+
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+function toNum(v: any) { const n = Number(v); return isNaN(n) || v === "" ? null : n; }
 
 export function AdminRatesClient({ rates }: Props) {
   const router = useRouter();
@@ -24,25 +37,44 @@ export function AdminRatesClient({ rates }: Props) {
   function openCreate() { setEditing(null); setForm(EMPTY); setShowDialog(true); }
   function openEdit(r: any) {
     setEditing(r);
-    setForm({ city: r.city ?? "", state: r.state ?? "", country: r.country ?? "US", usdPerDay: String(Number(r.usdPerDay)) });
+    setForm({
+      city: r.city ?? "", state: r.state ?? "", country: r.country ?? "US",
+      fiscalYear: r.fiscalYear ?? new Date().getFullYear(),
+      lodgingJan: r.lodgingJan ?? "", lodgingFeb: r.lodgingFeb ?? "", lodgingMar: r.lodgingMar ?? "",
+      lodgingApr: r.lodgingApr ?? "", lodgingMay: r.lodgingMay ?? "", lodgingJun: r.lodgingJun ?? "",
+      lodgingJul: r.lodgingJul ?? "", lodgingAug: r.lodgingAug ?? "", lodgingSep: r.lodgingSep ?? "",
+      lodgingOct: r.lodgingOct ?? "", lodgingNov: r.lodgingNov ?? "", lodgingDec: r.lodgingDec ?? "",
+      mieTotal: r.mieTotal ?? "", mieFirstLast: r.mieFirstLast ?? "",
+      mieBreakfast: r.mieBreakfast ?? "", mieLunch: r.mieLunch ?? "",
+      mieDinner: r.mieDinner ?? "", mieIncidental: r.mieIncidental ?? "",
+      usdPerDay: r.usdPerDay ? String(Number(r.usdPerDay)) : "",
+    });
     setShowDialog(true);
   }
+
+  function close() { setEditing(null); setForm(EMPTY); setShowDialog(false); }
 
   async function save() {
     setLoading(true);
     const url = editing ? `/api/admin/rates/${editing.id}` : "/api/admin/rates";
     const method = editing ? "PATCH" : "POST";
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, usdPerDay: Number(form.usdPerDay) }),
-    });
+    const payload = {
+      ...form,
+      fiscalYear: toNum(form.fiscalYear),
+      lodgingJan: toNum(form.lodgingJan), lodgingFeb: toNum(form.lodgingFeb), lodgingMar: toNum(form.lodgingMar),
+      lodgingApr: toNum(form.lodgingApr), lodgingMay: toNum(form.lodgingMay), lodgingJun: toNum(form.lodgingJun),
+      lodgingJul: toNum(form.lodgingJul), lodgingAug: toNum(form.lodgingAug), lodgingSep: toNum(form.lodgingSep),
+      lodgingOct: toNum(form.lodgingOct), lodgingNov: toNum(form.lodgingNov), lodgingDec: toNum(form.lodgingDec),
+      mieTotal: toNum(form.mieTotal), mieFirstLast: toNum(form.mieFirstLast),
+      mieBreakfast: toNum(form.mieBreakfast), mieLunch: toNum(form.mieLunch),
+      mieDinner: toNum(form.mieDinner), mieIncidental: toNum(form.mieIncidental),
+      usdPerDay: toNum(form.usdPerDay) ?? toNum(form.mieTotal) ?? 0,
+    };
+    const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     setLoading(false);
     if (res.ok) {
       toast({ title: editing ? "Rate updated" : "Rate added" });
-      setEditing(null);
-      setForm(EMPTY);
-      setShowDialog(false);
+      close();
       router.refresh();
     } else {
       const e = await res.json();
@@ -58,6 +90,8 @@ export function AdminRatesClient({ rates }: Props) {
     else toast({ variant: "destructive", title: "Failed to delete" });
   }
 
+  const f = (k: string) => ({ value: form[k] ?? "", onChange: (e: any) => setForm((p: any) => ({ ...p, [k]: e.target.value })) });
+
   const cityRates = rates.filter((r) => r.city);
   const areaRates = rates.filter((r) => r.area);
 
@@ -65,13 +99,13 @@ export function AdminRatesClient({ rates }: Props) {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold">Per Diem Rates</h1>
-        <p className="text-sm text-gray-500">Rate changes apply to new submissions only. Approved forms retain their snapshot rate.</p>
+        <p className="text-sm text-gray-500">GSA-compliant rates for tax purposes. Rate changes apply to new submissions only.</p>
       </div>
 
-      {/* City-based rates */}
+      {/* City-based US rates */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">City Rates (US)</h2>
+          <h2 className="text-lg font-semibold">US City Rates (GSA)</h2>
           <Button size="sm" onClick={openCreate}><Plus className="h-4 w-4 mr-1" />Add City Rate</Button>
         </div>
         {cityRates.length === 0 ? (
@@ -81,30 +115,35 @@ export function AdminRatesClient({ rates }: Props) {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b">
                 <tr>
-                  {["City", "State", "Country", "USD/Day", "Effective From", "Updated By", ""].map((h) => (
+                  {["City", "State", "FY", "M&IE/Day", "First/Last", "Lodging (Oct–Sep avg)", "Updated By", ""].map((h) => (
                     <th key={h} className="text-left px-4 py-3 font-medium text-gray-700">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {cityRates.map((r) => (
-                  <tr key={r.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium">{r.city}</td>
-                    <td className="px-4 py-3">{r.state}</td>
-                    <td className="px-4 py-3 text-gray-600">{r.country}</td>
-                    <td className="px-4 py-3 text-right font-mono">${Number(r.usdPerDay).toFixed(0)}</td>
-                    <td className="px-4 py-3 text-gray-600">{formatDate(r.effectiveFrom)}</td>
-                    <td className="px-4 py-3 text-gray-600">{r.updater?.name || "—"}</td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center gap-1 justify-end">
-                        <Button variant="ghost" size="sm" onClick={() => openEdit(r)}><Edit className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="sm" onClick={() => remove(r.id)} disabled={deleting === r.id}>
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {cityRates.map((r) => {
+                  const lodgingVals = [r.lodgingOct,r.lodgingNov,r.lodgingDec,r.lodgingJan,r.lodgingFeb,r.lodgingMar,r.lodgingApr,r.lodgingMay,r.lodgingJun,r.lodgingJul,r.lodgingAug,r.lodgingSep].filter(Boolean).map(Number);
+                  const lodgingAvg = lodgingVals.length ? (lodgingVals.reduce((a,b) => a+b,0) / lodgingVals.length).toFixed(0) : "—";
+                  return (
+                    <tr key={r.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 font-medium">{r.city}</td>
+                      <td className="px-4 py-3">{r.state}</td>
+                      <td className="px-4 py-3 text-gray-500">FY{r.fiscalYear ?? "—"}</td>
+                      <td className="px-4 py-3 font-mono">{r.mieTotal ? `$${Number(r.mieTotal).toFixed(0)}` : "—"}</td>
+                      <td className="px-4 py-3 font-mono">{r.mieFirstLast ? `$${Number(r.mieFirstLast).toFixed(0)}` : "—"}</td>
+                      <td className="px-4 py-3 font-mono text-gray-600">${lodgingAvg}/night avg</td>
+                      <td className="px-4 py-3 text-gray-600">{r.updater?.name || "—"}</td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex items-center gap-1 justify-end">
+                          <Button variant="ghost" size="sm" onClick={() => openEdit(r)}><Edit className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="sm" onClick={() => remove(r.id)} disabled={deleting === r.id}>
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -114,7 +153,7 @@ export function AdminRatesClient({ rates }: Props) {
       {/* International area rates */}
       {areaRates.length > 0 && (
         <div className="space-y-3">
-          <h2 className="text-lg font-semibold">International Area Rates</h2>
+          <h2 className="text-lg font-semibold">International Area Rates (Thailand Entity)</h2>
           <div className="bg-white rounded-lg border overflow-hidden max-w-xl">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b">
@@ -128,7 +167,7 @@ export function AdminRatesClient({ rates }: Props) {
                 {areaRates.map((r) => (
                   <tr key={r.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 font-medium">{r.area.charAt(0) + r.area.slice(1).toLowerCase()}</td>
-                    <td className="px-4 py-3 text-right font-mono">${Number(r.usdPerDay).toFixed(0)}</td>
+                    <td className="px-4 py-3 font-mono">${Number(r.usdPerDay).toFixed(0)}</td>
                     <td className="px-4 py-3 text-gray-600">{formatDate(r.effectiveFrom)}</td>
                     <td className="px-4 py-3 text-gray-600">{r.updater?.name || "—"}</td>
                     <td className="px-4 py-3 text-right">
@@ -142,36 +181,71 @@ export function AdminRatesClient({ rates }: Props) {
         </div>
       )}
 
-      {/* Add / Edit dialog */}
-      <Dialog open={showDialog} onOpenChange={(o) => { if (!o) { setEditing(null); setForm(EMPTY); setShowDialog(false); } }}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>{editing ? "Edit Rate" : "Add City Rate"}</DialogTitle></DialogHeader>
-          <div className="space-y-3">
+      {/* Dialog */}
+      <Dialog open={showDialog} onOpenChange={(o) => { if (!o) close(); }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editing ? "Edit Rate" : "Add City Rate"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-5">
+            {/* Location */}
             {!editing?.area && (
-              <>
-                <div className="space-y-1">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1 col-span-1">
                   <Label>City</Label>
-                  <Input placeholder="e.g. New York" value={form.city} onChange={(e) => setForm((p: any) => ({ ...p, city: e.target.value }))} />
+                  <Input placeholder="e.g. New York" {...f("city")} />
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label>State</Label>
-                    <Input placeholder="e.g. NY" value={form.state} onChange={(e) => setForm((p: any) => ({ ...p, state: e.target.value }))} />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Country</Label>
-                    <Input placeholder="US" value={form.country} onChange={(e) => setForm((p: any) => ({ ...p, country: e.target.value }))} />
-                  </div>
+                <div className="space-y-1">
+                  <Label>State</Label>
+                  <Input placeholder="e.g. NY" {...f("state")} />
                 </div>
-              </>
+                <div className="space-y-1">
+                  <Label>Fiscal Year</Label>
+                  <Input type="number" placeholder="2026" {...f("fiscalYear")} />
+                </div>
+              </div>
             )}
-            <div className="space-y-1">
-              <Label>USD per Day</Label>
-              <Input type="number" min={0} step="1" placeholder="e.g. 225" value={form.usdPerDay} onChange={(e) => setForm((p: any) => ({ ...p, usdPerDay: e.target.value }))} />
+
+            {/* M&IE */}
+            <div>
+              <p className="text-sm font-semibold mb-2">M&IE (Meals & Incidental Expenses)</p>
+              <div className="grid grid-cols-3 gap-3">
+                {[["M&IE Total/Day","mieTotal"],["First & Last Day (75%)","mieFirstLast"],["Breakfast","mieBreakfast"],["Lunch","mieLunch"],["Dinner","mieDinner"],["Incidentals","mieIncidental"]].map(([label, key]) => (
+                  <div key={key} className="space-y-1">
+                    <Label className="text-xs">{label}</Label>
+                    <div className="relative"><span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                    <Input type="number" min={0} step="1" className="pl-5" {...f(key)} /></div>
+                  </div>
+                ))}
+              </div>
             </div>
+
+            {/* Lodging by month */}
+            {!editing?.area && (
+              <div>
+                <p className="text-sm font-semibold mb-2">Lodging Cap by Month (excluding taxes)</p>
+                <div className="grid grid-cols-4 gap-2">
+                  {MONTHS.map((m) => (
+                    <div key={m} className="space-y-1">
+                      <Label className="text-xs">{m}</Label>
+                      <div className="relative"><span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                      <Input type="number" min={0} step="1" className="pl-5 h-8 text-sm" {...f(`lodging${m}`)} /></div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* USD/day fallback for TH area rates */}
+            {editing?.area && (
+              <div className="space-y-1">
+                <Label>USD per Day</Label>
+                <Input type="number" min={0} step="1" {...f("usdPerDay")} />
+              </div>
+            )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setEditing(null); setForm(EMPTY); setShowDialog(false); }}>Cancel</Button>
+            <Button variant="outline" onClick={close}>Cancel</Button>
             <Button onClick={save} disabled={loading}>{loading ? "Saving..." : "Save"}</Button>
           </DialogFooter>
         </DialogContent>
