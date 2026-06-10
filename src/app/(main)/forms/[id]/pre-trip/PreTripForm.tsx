@@ -16,6 +16,8 @@ import { Save, Send, AlertCircle } from "lucide-react";
 
 interface Props { form: any; user: any; rates: any[]; isReadOnly: boolean }
 
+type Entity = "US" | "TH"
+
 const EMPTY_EXPENSE = (phase: string, section: string, lineNumber: number) => ({
   phase, section, lineNumber, expenseType: "", expenseDate: "", workDetails: "", amountLocalFx: undefined, fxRateBot: undefined, amountThb: undefined,
 });
@@ -25,10 +27,13 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [retracting, setRetracting] = useState(false);
+  const [entity, setEntity] = useState<Entity>(form.entity ?? "TH");
   const [selectedArea, setSelectedArea] = useState<string>(form.costOfLivingArea ?? "");
   const [perDiemRate, setPerDiemRate] = useState<number>(0);
   const [citySearch, setCitySearch] = useState<string>(form.outCity ?? "");
   const [selectedRateId, setSelectedRateId] = useState<string>(form.perDiemRateId ?? "");
+
+  const isUS = entity === "US";
 
   const preLines = form.expenseLines?.filter((l: any) => l.phase === "PRE") ?? [];
   const getLine = (section: string, num: number) =>
@@ -84,9 +89,6 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
   const watchFxRate = watch("botFxRate") ?? 0;
   const watchArea = watch("costOfLivingArea");
 
-  const watchOutCountry = watch("outCountry");
-  const isUS = watchOutCountry === "United States" || watchOutCountry === "US";
-
   // City rates (for US) and area rates (international)
   const cityRates = rates.filter((r: any) => r.city);
   const areaRates = rates.filter((r: any) => r.area);
@@ -129,7 +131,7 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
     const res = await fetch(`/api/forms/${form.id}/pre-trip`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...data, action: "SAVE" }),
+      body: JSON.stringify({ ...data, entity, action: "SAVE" }),
     });
     setSaving(false);
     if (res.ok) {
@@ -145,7 +147,7 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
     const res = await fetch(`/api/forms/${form.id}/pre-trip`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...data, action: "SUBMIT" }),
+      body: JSON.stringify({ ...data, entity, action: "SUBMIT" }),
     });
     setSubmitting(false);
     if (res.ok) {
@@ -171,6 +173,38 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
 
   return (
     <form className="space-y-6 max-w-5xl">
+      {/* Entity switcher */}
+      {!isReadOnly && (
+        <div className="flex items-center gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <span className="text-sm font-medium text-blue-800">Billing Entity:</span>
+          <div className="flex rounded-lg border border-blue-300 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setEntity("US")}
+              className={`px-4 py-1.5 text-sm font-medium transition-colors ${entity === "US" ? "bg-blue-600 text-white" : "bg-white text-blue-700 hover:bg-blue-50"}`}
+            >
+              🇺🇸 US Entity
+            </button>
+            <button
+              type="button"
+              onClick={() => setEntity("TH")}
+              className={`px-4 py-1.5 text-sm font-medium transition-colors ${entity === "TH" ? "bg-blue-600 text-white" : "bg-white text-blue-700 hover:bg-blue-50"}`}
+            >
+              🇹🇭 Thailand Entity
+            </button>
+          </div>
+          <span className="text-xs text-blue-600">
+            {isUS ? "USD amounts, city-based per diem, no FX conversion" : "Local currency → THB via BOT FX rate, area-based per diem"}
+          </span>
+        </div>
+      )}
+      {isReadOnly && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 border rounded-lg text-sm text-gray-600">
+          <span className="font-medium">Entity:</span>
+          <span>{entity === "US" ? "🇺🇸 US Entity (USD)" : "🇹🇭 Thailand Entity (THB)"}</span>
+        </div>
+      )}
+
       {profileIncomplete && (
         <div className="flex items-center gap-2 rounded-lg border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-800">
           <AlertCircle className="h-4 w-4 shrink-0" />
@@ -271,6 +305,7 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
             setValue={setValue}
             isReadOnly={isReadOnly}
             calcThb={calcThb}
+            isUS={isUS}
           />
           <ExpenseTable
             title="Other Expenses"
@@ -282,9 +317,10 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
             setValue={setValue}
             isReadOnly={isReadOnly}
             calcThb={calcThb}
+            isUS={isUS}
           />
           <div className="text-right text-sm font-medium">
-            Total (THB): <span className="text-lg font-bold ml-2">{totalThb.toFixed(2)}</span>
+            Total ({isUS ? "USD" : "THB"}): <span className="text-lg font-bold ml-2">{totalThb.toFixed(2)}</span>
           </div>
         </CardContent>
       </Card>
@@ -348,13 +384,15 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
             <F label="Rate (USD/Day)">
               <Input value={perDiemRate > 0 ? `${perDiemRate} USD` : "—"} readOnly className="bg-gray-50" />
             </F>
-            <F label="BOT FX Rate">
-              <Input type="number" step="0.01" {...register("botFxRate")} disabled={isReadOnly} />
-            </F>
+            {!isUS && (
+              <F label="BOT FX Rate">
+                <Input type="number" step="0.01" {...register("botFxRate")} disabled={isReadOnly} />
+              </F>
+            )}
             <div className="text-sm space-y-1">
               <p className="text-gray-500">Total Per Diem</p>
               <p className="font-bold">{perDiemUsd.toFixed(2)} USD</p>
-              <p className="font-bold text-blue-700">{perDiemThb.toFixed(2)} THB</p>
+              {!isUS && <p className="font-bold text-blue-700">{perDiemThb.toFixed(2)} THB</p>}
             </div>
           </div>
           <p className="text-xs text-gray-500">Counting from first to last day, overnight stays only</p>
@@ -406,8 +444,9 @@ function CountrySelect({ name, register, setValue, watch, disabled }: any) {
   );
 }
 
-function ExpenseTable({ title, lines, offset, isTransport, register, watch, setValue, isReadOnly, calcThb }: any) {
+function ExpenseTable({ title, lines, offset, isTransport, register, watch, setValue, isReadOnly, calcThb, isUS }: any) {
   const totalThb = lines.reduce((s: number, l: any) => s + calcThb(l), 0);
+  const colSpanTotal = isUS ? 4 : 6;
   return (
     <div>
       <h3 className="font-medium text-sm mb-2">{title}</h3>
@@ -419,9 +458,9 @@ function ExpenseTable({ title, lines, offset, isTransport, register, watch, setV
               <th className="border border-gray-300 px-2 py-1.5 text-left w-36">Type</th>
               <th className="border border-gray-300 px-2 py-1.5 text-left w-28">Date</th>
               <th className="border border-gray-300 px-2 py-1.5 text-left">Work Details</th>
-              <th className="border border-gray-300 px-2 py-1.5 text-right w-28">Amount (Local Fx)</th>
-              <th className="border border-gray-300 px-2 py-1.5 text-right w-24">FX Rate (BOT)</th>
-              <th className="border border-gray-300 px-2 py-1.5 text-right w-28">Amount (THB)</th>
+              <th className="border border-gray-300 px-2 py-1.5 text-right w-28">Amount ({isUS ? "USD" : "Local Fx"})</th>
+              {!isUS && <th className="border border-gray-300 px-2 py-1.5 text-right w-24">FX Rate (BOT)</th>}
+              {!isUS && <th className="border border-gray-300 px-2 py-1.5 text-right w-28">Amount (THB)</th>}
             </tr>
           </thead>
           <tbody>
@@ -457,17 +496,21 @@ function ExpenseTable({ title, lines, offset, isTransport, register, watch, setV
                   <td className="border border-gray-300 px-1 py-1">
                     <Input type="number" step="0.01" className="h-7 text-xs text-right" {...register(`expenseLines.${idx}.amountLocalFx`)} disabled={isReadOnly} />
                   </td>
-                  <td className="border border-gray-300 px-1 py-1">
-                    <Input type="number" step="0.01" className="h-7 text-xs text-right" {...register(`expenseLines.${idx}.fxRateBot`)} disabled={isReadOnly} />
-                  </td>
-                  <td className="border border-gray-300 px-2 py-1 text-right bg-gray-50">{thb > 0 ? thb.toFixed(2) : "—"}</td>
+                  {!isUS && (
+                    <td className="border border-gray-300 px-1 py-1">
+                      <Input type="number" step="0.01" className="h-7 text-xs text-right" {...register(`expenseLines.${idx}.fxRateBot`)} disabled={isReadOnly} />
+                    </td>
+                  )}
+                  {!isUS && (
+                    <td className="border border-gray-300 px-2 py-1 text-right bg-gray-50">{thb > 0 ? thb.toFixed(2) : "—"}</td>
+                  )}
                 </tr>
               );
             })}
           </tbody>
           <tfoot>
             <tr className="bg-gray-50 font-medium">
-              <td colSpan={6} className="border border-gray-300 px-2 py-1.5 text-right">Total (THB)</td>
+              <td colSpan={colSpanTotal} className="border border-gray-300 px-2 py-1.5 text-right">Total ({isUS ? "USD" : "THB"})</td>
               <td className="border border-gray-300 px-2 py-1.5 text-right">{totalThb.toFixed(2)}</td>
             </tr>
           </tfoot>

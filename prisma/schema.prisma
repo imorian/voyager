@@ -25,6 +25,11 @@ enum TripStatus {
   POST_REJECTED
 }
 
+enum Entity {
+  US
+  TH
+}
+
 enum CostOfLivingArea {
   HIGHEST
   HIGH
@@ -91,6 +96,8 @@ model TripForm {
   referenceNumber String           @unique @map("reference_number")
   employeeId      String           @map("employee_id")
   status          TripStatus       @default(DRAFT)
+
+  entity          Entity           @default(TH)
 
   // Employee info snapshot
   empIdSnap      String?  @map("emp_id_snap")

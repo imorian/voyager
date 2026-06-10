@@ -23,6 +23,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { action, expenseLines, ...fields } = body;
 
   const toUpdate: any = {
+    entity: fields.entity ?? "TH",
     purpose: fields.purpose,
     objective: fields.objective,
     costChargedTo: fields.costChargedTo,
