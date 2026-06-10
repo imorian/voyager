@@ -1,0 +1,248 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  EMPLOYEE
+  MANAGER
+  ADMIN
+}
+
+enum TripStatus {
+  DRAFT
+  PRE_SUBMITTED
+  PRE_APPROVED
+  PRE_REJECTED
+  POST_DRAFT
+  POST_SUBMITTED
+  POST_APPROVED
+  POST_REJECTED
+}
+
+enum CostOfLivingArea {
+  HIGHEST
+  HIGH
+  NORMAL
+  UNSPECIFIED
+}
+
+enum ExpensePhase {
+  PRE
+  POST
+}
+
+enum ExpenseSection {
+  TRANSPORTATION
+  OTHER
+}
+
+enum ApprovalAction {
+  SUBMITTED
+  APPROVED
+  REJECTED
+  RETRACTED
+}
+
+enum NotificationType {
+  PRE_SUBMITTED
+  PRE_APPROVED
+  PRE_REJECTED
+  POST_SUBMITTED
+  POST_APPROVED
+  POST_REJECTED
+  USER_INVITED
+}
+
+model User {
+  id         String   @id @default(cuid())
+  email      String   @unique
+  name       String
+  empId      String   @unique @map("emp_id")
+  position   String?
+  grade      String?
+  department String?
+  division   String?
+  role       Role     @default(EMPLOYEE)
+  managerId  String?  @map("manager_id")
+  isActive   Boolean  @default(true) @map("is_active")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  manager          User?          @relation("ManagerEmployee", fields: [managerId], references: [id])
+  directReports    User[]         @relation("ManagerEmployee")
+  tripForms        TripForm[]     @relation("EmployeeForms")
+  preApprovals     TripForm[]     @relation("PreApprover")
+  postApprovals    TripForm[]     @relation("PostApprover")
+  approvalLogs     ApprovalLog[]
+  receipts         Receipt[]
+  perDiemRates     PerDiemRate[]
+  notifications    Notification[]
+
+  @@map("users")
+}
+
+model TripForm {
+  id              String           @id @default(cuid())
+  referenceNumber String           @unique @map("reference_number")
+  employeeId      String           @map("employee_id")
+  status          TripStatus       @default(DRAFT)
+
+  // Employee info snapshot
+  empIdSnap      String?  @map("emp_id_snap")
+  empNameSnap    String?  @map("emp_name_snap")
+  positionSnap   String?  @map("position_snap")
+  gradeSnap      String?  @map("grade_snap")
+  departmentSnap String?  @map("department_snap")
+  divisionSnap   String?  @map("division_snap")
+
+  // Trip details
+  purpose       String?
+  objective     String?
+  costChargedTo String?  @map("cost_charged_to")
+  costCenter    String?  @map("cost_center")
+
+  // Outgoing flight
+  outCity      String?  @map("out_city")
+  outCountry   String?  @map("out_country")
+  outAirline   String?  @map("out_airline")
+  outFlightNo  String?  @map("out_flight_no")
+  outDepDate   DateTime? @map("out_dep_date")
+  outDepTime   String?  @map("out_dep_time")
+  outArrDate   DateTime? @map("out_arr_date")
+  outArrTime   String?  @map("out_arr_time")
+
+  // Incoming flight
+  inCity      String?  @map("in_city")
+  inCountry   String?  @map("in_country")
+  inAirline   String?  @map("in_airline")
+  inFlightNo  String?  @map("in_flight_no")
+  inDepDate   DateTime? @map("in_dep_date")
+  inDepTime   String?  @map("in_dep_time")
+  inArrDate   DateTime? @map("in_arr_date")
+  inArrTime   String?  @map("in_arr_time")
+
+  // Per diem
+  totalTripDays      Int?     @map("total_trip_days")
+  costOfLivingArea   CostOfLivingArea? @map("cost_of_living_area")
+  perDiemUsdPerDay   Decimal? @map("per_diem_usd_per_day")
+  botFxRate          Decimal? @map("bot_fx_rate")
+  perDiemTotalUsd    Decimal? @map("per_diem_total_usd")
+  perDiemTotalThb    Decimal? @map("per_diem_total_thb")
+
+  // Pre-trip approval
+  preSubmittedAt   DateTime? @map("pre_submitted_at")
+  preApprovedBy    String?   @map("pre_approved_by")
+  preApprovedAt    DateTime? @map("pre_approved_at")
+  preRejectionNote String?   @map("pre_rejection_note")
+
+  // Post-trip approval
+  postSubmittedAt   DateTime? @map("post_submitted_at")
+  postApprovedBy    String?   @map("post_approved_by")
+  postApprovedAt    DateTime? @map("post_approved_at")
+  postRejectionNote String?   @map("post_rejection_note")
+
+  // Grand totals
+  postTotalExpensesThb Decimal? @map("post_total_expenses_thb")
+  postTotalPerdiemThb  Decimal? @map("post_total_perdiem_thb")
+  postGrandTotalThb    Decimal? @map("post_grand_total_thb")
+
+  pdfStoragePath String?  @map("pdf_storage_path")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  employee      User          @relation("EmployeeForms", fields: [employeeId], references: [id])
+  preApprover   User?         @relation("PreApprover", fields: [preApprovedBy], references: [id])
+  postApprover  User?         @relation("PostApprover", fields: [postApprovedBy], references: [id])
+  expenseLines  ExpenseLine[]
+  receipts      Receipt[]
+  approvalLogs  ApprovalLog[]
+  notifications Notification[]
+
+  @@map("trip_forms")
+}
+
+model ExpenseLine {
+  id          String         @id @default(cuid())
+  tripFormId  String         @map("trip_form_id")
+  phase       ExpensePhase
+  section     ExpenseSection
+  lineNumber  Int            @map("line_number")
+  expenseType String?        @map("expense_type")
+  expenseDate DateTime?      @map("expense_date")
+  workDetails String?        @map("work_details")
+  amountLocalFx Decimal?     @map("amount_local_fx")
+  fxRateBot     Decimal?     @map("fx_rate_bot")
+  amountThb     Decimal?     @map("amount_thb")
+
+  tripForm TripForm  @relation(fields: [tripFormId], references: [id], onDelete: Cascade)
+  receipts Receipt[]
+
+  @@unique([tripFormId, phase, section, lineNumber])
+  @@map("expense_lines")
+}
+
+model Receipt {
+  id            String   @id @default(cuid())
+  tripFormId    String   @map("trip_form_id")
+  expenseLineId String?  @map("expense_line_id")
+  storagePath   String   @map("storage_path")
+  fileName      String   @map("file_name")
+  fileType      String   @map("file_type")
+  fileSizeBytes Int      @map("file_size_bytes")
+  uploadedBy    String   @map("uploaded_by")
+  uploadedAt    DateTime @default(now()) @map("uploaded_at")
+
+  tripForm    TripForm     @relation(fields: [tripFormId], references: [id], onDelete: Cascade)
+  expenseLine ExpenseLine? @relation(fields: [expenseLineId], references: [id])
+  uploader    User         @relation(fields: [uploadedBy], references: [id])
+
+  @@map("receipts")
+}
+
+model ApprovalLog {
+  id         String         @id @default(cuid())
+  tripFormId String         @map("trip_form_id")
+  phase      ExpensePhase
+  action     ApprovalAction
+  actorId    String         @map("actor_id")
+  notes      String?
+  actionedAt DateTime       @default(now()) @map("actioned_at")
+
+  tripForm TripForm @relation(fields: [tripFormId], references: [id], onDelete: Cascade)
+  actor    User     @relation(fields: [actorId], references: [id])
+
+  @@map("approval_log")
+}
+
+model PerDiemRate {
+  id            String           @id @default(cuid())
+  area          CostOfLivingArea @unique
+  usdPerDay     Decimal          @map("usd_per_day")
+  effectiveFrom DateTime         @map("effective_from")
+  updatedBy     String?          @map("updated_by")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+
+  updater User? @relation(fields: [updatedBy], references: [id])
+
+  @@map("per_diem_rates")
+}
+
+model Notification {
+  id              String           @id @default(cuid())
+  tripFormId      String           @map("trip_form_id")
+  recipientId     String           @map("recipient_id")
+  type            NotificationType
+  sentAt          DateTime         @default(now()) @map("sent_at")
+  resendMessageId String?          @map("resend_message_id")
+
+  tripForm  TripForm @relation(fields: [tripFormId], references: [id], onDelete: Cascade)
+  recipient User     @relation(fields: [recipientId], references: [id])
+
+  @@map("notifications")
+}
