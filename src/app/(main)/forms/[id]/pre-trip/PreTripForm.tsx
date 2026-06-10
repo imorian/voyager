@@ -27,6 +27,8 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
   const [retracting, setRetracting] = useState(false);
   const [selectedArea, setSelectedArea] = useState<string>(form.costOfLivingArea ?? "");
   const [perDiemRate, setPerDiemRate] = useState<number>(0);
+  const [citySearch, setCitySearch] = useState<string>(form.outCity ?? "");
+  const [selectedRateId, setSelectedRateId] = useState<string>(form.perDiemRateId ?? "");
 
   const preLines = form.expenseLines?.filter((l: any) => l.phase === "PRE") ?? [];
   const getLine = (section: string, num: number) =>
@@ -82,10 +84,29 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
   const watchFxRate = watch("botFxRate") ?? 0;
   const watchArea = watch("costOfLivingArea");
 
+  const watchOutCountry = watch("outCountry");
+  const isUS = watchOutCountry === "United States" || watchOutCountry === "US";
+
+  // City rates (for US) and area rates (international)
+  const cityRates = rates.filter((r: any) => r.city);
+  const areaRates = rates.filter((r: any) => r.area);
+
+  const filteredCityRates = citySearch.trim().length > 0
+    ? cityRates.filter((r: any) =>
+        r.city.toLowerCase().includes(citySearch.toLowerCase()) ||
+        r.state.toLowerCase().includes(citySearch.toLowerCase())
+      )
+    : cityRates;
+
   useEffect(() => {
-    const rate = rates.find((r) => r.area === watchArea);
-    setPerDiemRate(rate ? Number(rate.usdPerDay) : 0);
-  }, [watchArea, rates]);
+    if (isUS) {
+      const rate = cityRates.find((r: any) => r.id === selectedRateId);
+      setPerDiemRate(rate ? Number(rate.usdPerDay) : 0);
+    } else {
+      const rate = areaRates.find((r: any) => r.area === watchArea);
+      setPerDiemRate(rate ? Number(rate.usdPerDay) : 0);
+    }
+  }, [watchArea, selectedRateId, isUS, rates]);
 
   const perDiemUsd = Number(watchDays) * perDiemRate;
   const perDiemThb = perDiemUsd * Number(watchFxRate);
@@ -271,25 +292,59 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
       {/* Section 5 — Per Diem */}
       <Card>
         <CardHeader><CardTitle>Section 5 — Estimated Per Diem (Overnight Stay Only)</CardTitle></CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 items-end">
             <F label="Total Days on Trip">
               <Input type="number" min={0} {...register("totalTripDays")} disabled={isReadOnly} />
             </F>
-            <F label="Area">
-              <Select
-                value={watchArea ?? ""}
-                onValueChange={(v) => setValue("costOfLivingArea", v as any)}
-                disabled={isReadOnly}
-              >
-                <SelectTrigger><SelectValue placeholder="Select area" /></SelectTrigger>
-                <SelectContent>
-                  {["HIGHEST", "HIGH", "NORMAL", "UNSPECIFIED"].map((a) => (
-                    <SelectItem key={a} value={a}>{a.charAt(0) + a.slice(1).toLowerCase()}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </F>
+
+            {isUS ? (
+              <div className="col-span-2 space-y-1">
+                <Label>City (US Per Diem)</Label>
+                <Input
+                  placeholder="Search city or state..."
+                  value={citySearch}
+                  onChange={(e) => { setCitySearch(e.target.value); setSelectedRateId(""); setPerDiemRate(0); }}
+                  disabled={isReadOnly}
+                />
+                {citySearch && !isReadOnly && filteredCityRates.length > 0 && !selectedRateId && (
+                  <div className="border rounded-md bg-white shadow-sm max-h-40 overflow-y-auto z-10 relative">
+                    {filteredCityRates.map((r: any) => (
+                      <button
+                        key={r.id}
+                        type="button"
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 border-b last:border-b-0"
+                        onClick={() => { setSelectedRateId(r.id); setCitySearch(`${r.city}, ${r.state}`); setPerDiemRate(Number(r.usdPerDay)); }}
+                      >
+                        <span className="font-medium">{r.city}, {r.state}</span>
+                        <span className="ml-2 text-gray-500">${Number(r.usdPerDay).toFixed(0)}/day</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {citySearch && !isReadOnly && filteredCityRates.length === 0 && (
+                  <p className="text-xs text-gray-400 px-1">No city rates found. Ask admin to add this city.</p>
+                )}
+              </div>
+            ) : (
+              <F label="Area">
+                <Select
+                  value={watchArea ?? ""}
+                  onValueChange={(v) => setValue("costOfLivingArea", v as any)}
+                  disabled={isReadOnly}
+                >
+                  <SelectTrigger><SelectValue placeholder="Select area" /></SelectTrigger>
+                  <SelectContent>
+                    {areaRates.map((r: any) => (
+                      <SelectItem key={r.area} value={r.area}>
+                        {r.area.charAt(0) + r.area.slice(1).toLowerCase()} — ${Number(r.usdPerDay).toFixed(0)}/day
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </F>
+            )}
+
             <F label="Rate (USD/Day)">
               <Input value={perDiemRate > 0 ? `${perDiemRate} USD` : "—"} readOnly className="bg-gray-50" />
             </F>
@@ -302,7 +357,7 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
               <p className="font-bold text-blue-700">{perDiemThb.toFixed(2)} THB</p>
             </div>
           </div>
-          <p className="text-xs text-gray-500 mt-2">Counting from first to last day, overnight stays only</p>
+          <p className="text-xs text-gray-500">Counting from first to last day, overnight stays only</p>
         </CardContent>
       </Card>
 
