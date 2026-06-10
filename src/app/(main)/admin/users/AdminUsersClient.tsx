@@ -118,10 +118,10 @@ export function AdminUsersClient({ users, managers }: Props) {
             </div>
             <div className="space-y-1">
               <Label>Manager</Label>
-              <Select value={form.managerId ?? ""} onValueChange={(v) => setForm((p: any) => ({ ...p, managerId: v }))}>
+              <Select value={form.managerId || "none"} onValueChange={(v) => setForm((p: any) => ({ ...p, managerId: v === "none" ? "" : v }))}>
                 <SelectTrigger><SelectValue placeholder="No manager" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   {managers.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
                 </SelectContent>
               </Select>
