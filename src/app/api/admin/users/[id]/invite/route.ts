@@ -4,7 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email/send";
 import { userInviteEmail } from "@/lib/email/templates";
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const supabase = createClient();
   const { data: { user: authUser } } = await supabase.auth.getUser();
   if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -12,7 +13,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const admin = await prisma.user.findUnique({ where: { email: authUser.email! } });
   if (!admin || admin.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const target = await prisma.user.findUnique({ where: { id: params.id } });
+  const target = await prisma.user.findUnique({ where: { id } });
   if (!target) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const service = createServiceClient();

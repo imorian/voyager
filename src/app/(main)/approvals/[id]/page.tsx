@@ -3,11 +3,12 @@ import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ApprovalReviewClient } from "./ApprovalReviewClient";
 
-export default async function ApprovalReviewPage({ params }: { params: { id: string } }) {
+export default async function ApprovalReviewPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const user = await requireRole("MANAGER", "ADMIN");
 
   const form = await prisma.tripForm.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       employee: true,
       expenseLines: {

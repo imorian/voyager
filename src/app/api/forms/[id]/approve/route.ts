@@ -5,7 +5,8 @@ import { sendEmail } from "@/lib/email/send";
 import { preApprovedEmail, postApprovedEmail } from "@/lib/email/templates";
 import { formatDate } from "@/lib/utils";
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const supabase = createClient();
   const { data: { user: authUser } } = await supabase.auth.getUser();
   if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -13,7 +14,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const approver = await prisma.user.findUnique({ where: { email: authUser.email! } });
   if (!approver || !["MANAGER", "ADMIN"].includes(approver.role)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const form = await prisma.tripForm.findUnique({ where: { id: params.id }, include: { employee: true } });
+  const form = await prisma.tripForm.findUnique({ where: { id }, include: { employee: true } });
   if (!form) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const { phase, notes } = await req.json();
@@ -33,7 +34,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   if (!isPre) {
     // Compute grand total for post approval
-    const lines = await prisma.expenseLine.findMany({ where: { tripFormId: params.id, phase: "POST" } });
+    const lines = await prisma.expenseLine.findMany({ where: { tripFormId: id, phase: "POST" } });
     const totalExpenses = lines.reduce((s, l) => s + Number(l.amountThb ?? 0), 0);
     const perDiemThb = Number(form.perDiemTotalThb ?? 0);
     toUpdate.postTotalExpensesThb = totalExpenses;
@@ -42,9 +43,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   }
 
   await prisma.$transaction(async (tx) => {
-    await tx.tripForm.update({ where: { id: params.id }, data: toUpdate });
+    await tx.tripForm.update({ where: { id: id }, data: toUpdate });
     await tx.approvalLog.create({
-      data: { tripFormId: params.id, phase: isPre ? "PRE" : "POST", action: "APPROVED", actorId: approver.id, notes },
+      data: { tripFormId: id, phase: isPre ? "PRE" : "POST", action: "APPROVED", actorId: approver.id, notes },
     });
   });
 
@@ -52,10 +53,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const employee = form.employee;
   if (isPre) {
     const { subject, html } = preApprovedEmail(form.referenceNumber, [form.outCity, form.outCountry].filter(Boolean).join(", "), form.outDepDate ? formatDate(form.outDepDate) : "");
-    await sendEmail(employee.email, subject, html, params.id, employee.id, "PRE_APPROVED");
+    await sendEmail(employee.email, subject, html, id, employee.id, "PRE_APPROVED");
   } else {
     const { subject, html } = postApprovedEmail(form.referenceNumber);
-    await sendEmail(employee.email, subject, html, params.id, employee.id, "POST_APPROVED");
+    await sendEmail(employee.email, subject, html, id, employee.id, "POST_APPROVED");
   }
 
   return NextResponse.json({ ok: true });

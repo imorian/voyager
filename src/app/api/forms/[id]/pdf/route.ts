@@ -7,7 +7,8 @@ import React from "react";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const supabase = createClient();
   const { data: { user: authUser } } = await supabase.auth.getUser();
   if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -16,7 +17,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   if (!dbUser) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const form = await prisma.tripForm.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       expenseLines: { orderBy: [{ section: "asc" }, { lineNumber: "asc" }] },
       preApprover: { select: { name: true } },

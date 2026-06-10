@@ -4,7 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email/send";
 import { preRejectedEmail, postRejectedEmail } from "@/lib/email/templates";
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const supabase = createClient();
   const { data: { user: authUser } } = await supabase.auth.getUser();
   if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -12,7 +13,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const approver = await prisma.user.findUnique({ where: { email: authUser.email! } });
   if (!approver || !["MANAGER", "ADMIN"].includes(approver.role)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const form = await prisma.tripForm.findUnique({ where: { id: params.id }, include: { employee: true } });
+  const form = await prisma.tripForm.findUnique({ where: { id }, include: { employee: true } });
   if (!form) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const { phase, notes } = await req.json();
@@ -27,19 +28,19 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     : { status: "POST_REJECTED", postRejectionNote: notes };
 
   await prisma.$transaction(async (tx) => {
-    await tx.tripForm.update({ where: { id: params.id }, data: toUpdate });
+    await tx.tripForm.update({ where: { id: id }, data: toUpdate });
     await tx.approvalLog.create({
-      data: { tripFormId: params.id, phase: isPre ? "PRE" : "POST", action: "REJECTED", actorId: approver.id, notes },
+      data: { tripFormId: id, phase: isPre ? "PRE" : "POST", action: "REJECTED", actorId: approver.id, notes },
     });
   });
 
   const employee = form.employee;
   if (isPre) {
     const { subject, html } = preRejectedEmail(form.referenceNumber, notes);
-    await sendEmail(employee.email, subject, html, params.id, employee.id, "PRE_REJECTED");
+    await sendEmail(employee.email, subject, html, id, employee.id, "PRE_REJECTED");
   } else {
     const { subject, html } = postRejectedEmail(form.referenceNumber, notes);
-    await sendEmail(employee.email, subject, html, params.id, employee.id, "POST_REJECTED");
+    await sendEmail(employee.email, subject, html, id, employee.id, "POST_REJECTED");
   }
 
   return NextResponse.json({ ok: true });

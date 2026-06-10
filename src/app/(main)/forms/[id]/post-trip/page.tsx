@@ -3,10 +3,11 @@ import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PostTripForm } from "./PostTripForm";
 
-export default async function PostTripPage({ params }: { params: { id: string } }) {
+export default async function PostTripPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const user = await requireUser();
   const form = await prisma.tripForm.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       expenseLines: {
         include: { receipts: true },

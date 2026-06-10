@@ -11,13 +11,14 @@ async function requireAdmin() {
   return dbUser;
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = await req.json();
   const user = await prisma.user.update({
-    where: { id: params.id },
+    where: { id },
     data: {
       name: body.name,
       empId: body.empId,

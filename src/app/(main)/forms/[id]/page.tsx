@@ -8,10 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileText, Edit, CheckCircle } from "lucide-react";
 
-export default async function FormOverviewPage({ params }: { params: { id: string } }) {
+export default async function FormOverviewPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const user = await requireUser();
   const form = await prisma.tripForm.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       employee: true,
       preApprover: { select: { name: true } },

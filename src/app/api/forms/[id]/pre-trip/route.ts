@@ -5,7 +5,8 @@ import { sendEmail } from "@/lib/email/send";
 import { preSubmittedEmail } from "@/lib/email/templates";
 import { formatDate } from "@/lib/utils";
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const supabase = createClient();
   const { data: { user: authUser } } = await supabase.auth.getUser();
   if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -13,7 +14,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const dbUser = await prisma.user.findUnique({ where: { email: authUser.email! } });
   if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-  const form = await prisma.tripForm.findUnique({ where: { id: params.id } });
+  const form = await prisma.tripForm.findUnique({ where: { id } });
   if (!form) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (form.employeeId !== dbUser.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   if (!["DRAFT", "PRE_REJECTED"].includes(form.status)) return NextResponse.json({ error: "Form is locked" }, { status: 400 });
@@ -77,16 +78,16 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 
   await prisma.$transaction(async (tx) => {
-    await tx.tripForm.update({ where: { id: params.id }, data: toUpdate });
+    await tx.tripForm.update({ where: { id: id }, data: toUpdate });
 
     // Upsert expense lines
     if (expenseLines?.length) {
       for (const line of expenseLines) {
         const thb = Number(line.amountLocalFx ?? 0) * Number(line.fxRateBot ?? 0);
         await tx.expenseLine.upsert({
-          where: { tripFormId_phase_section_lineNumber: { tripFormId: params.id, phase: "PRE", section: line.section, lineNumber: line.lineNumber } },
+          where: { tripFormId_phase_section_lineNumber: { tripFormId: id, phase: "PRE", section: line.section, lineNumber: line.lineNumber } },
           create: {
-            tripFormId: params.id, phase: "PRE", section: line.section, lineNumber: line.lineNumber,
+            tripFormId: id, phase: "PRE", section: line.section, lineNumber: line.lineNumber,
             expenseType: line.expenseType || null, expenseDate: line.expenseDate ? new Date(line.expenseDate) : null,
             workDetails: line.workDetails || null,
             amountLocalFx: line.amountLocalFx ? Number(line.amountLocalFx) : null,
@@ -106,7 +107,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
     if (action === "SUBMIT") {
       await tx.approvalLog.create({
-        data: { tripFormId: params.id, phase: "PRE", action: "SUBMITTED", actorId: dbUser.id },
+        data: { tripFormId: id, phase: "PRE", action: "SUBMITTED", actorId: dbUser.id },
       });
     }
   });
@@ -120,7 +121,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         [fields.outCity, fields.outCountry].filter(Boolean).join(", "),
         fields.outDepDate ? formatDate(new Date(fields.outDepDate)) : ""
       );
-      await sendEmail(manager.email, subject, html, params.id, manager.id, "PRE_SUBMITTED");
+      await sendEmail(manager.email, subject, html, id, manager.id, "PRE_SUBMITTED");
     }
   }
 
