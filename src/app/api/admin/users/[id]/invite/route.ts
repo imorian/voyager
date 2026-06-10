@@ -17,10 +17,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!target) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const service = createServiceClient();
-  const { data } = await service.auth.admin.inviteUserByEmail(target.email);
+  const redirectTo = `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback?type=invite`;
+  await service.auth.admin.inviteUserByEmail(target.email, { redirectTo });
 
-  const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`;
-  const { subject, html } = userInviteEmail(inviteUrl);
+  const { subject, html } = userInviteEmail(redirectTo);
   await sendEmail(target.email, subject, html, "", target.id, "USER_INVITED");
 
   return NextResponse.json({ ok: true });
