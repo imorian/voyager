@@ -7,7 +7,7 @@ const ACCEPTED = ["application/pdf", "image/jpeg", "image/png", "image/heic"];
 const MAX_SIZE = 10 * 1024 * 1024;
 
 export async function POST(req: NextRequest) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: { user: authUser } } = await supabase.auth.getUser();
   if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 

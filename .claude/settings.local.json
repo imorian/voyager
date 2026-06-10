@@ -5,7 +5,11 @@
       "PowerShell(node --version)",
       "PowerShell(npm --version)",
       "PowerShell($env:PATH; Get-Command node -ErrorAction SilentlyContinue; Get-Command npm -ErrorAction SilentlyContinue; ls \"C:\\\\Program Files\\\\nodejs\" -ErrorAction SilentlyContinue; ls \"$env:APPDATA\\\\npm\" -ErrorAction SilentlyContinue)",
-      "PowerShell(Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force)"
+      "PowerShell(Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(xargs grep -l 'createClient\\(\\)')"
     ]
   }
 }
