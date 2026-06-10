@@ -1,7 +1,9 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { Plus, Download, Eye, FileText } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Plus, Download, Eye, FileText, Trash2 } from "lucide-react";
+import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -17,10 +19,25 @@ interface Props {
 }
 
 export function DashboardClient({ forms, user, stats }: Props) {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [deleting, setDeleting] = useState<string | null>(null);
+
+  async function deleteForm(id: string, ref: string) {
+    if (!confirm(`Delete ${ref}? This cannot be undone.`)) return;
+    setDeleting(id);
+    const res = await fetch(`/api/forms/${id}`, { method: "DELETE" });
+    setDeleting(null);
+    if (res.ok) {
+      toast({ title: "Form deleted" });
+      router.refresh();
+    } else {
+      toast({ variant: "destructive", title: "Failed to delete" });
+    }
+  }
 
   const filtered = forms.filter((f) => {
     const matchSearch = !search ||
@@ -169,6 +186,11 @@ export function DashboardClient({ forms, user, stats }: Props) {
                       {f.status === "POST_APPROVED" && (
                         <Button variant="ghost" size="sm" asChild>
                           <Link href={`/forms/${f.id}/pdf`}><Download className="h-4 w-4" /></Link>
+                        </Button>
+                      )}
+                      {user.role === "ADMIN" && (
+                        <Button variant="ghost" size="sm" onClick={() => deleteForm(f.id, f.referenceNumber)} disabled={deleting === f.id}>
+                          <Trash2 className="h-4 w-4 text-red-500" />
                         </Button>
                       )}
                     </div>

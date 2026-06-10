@@ -11,7 +11,11 @@
       "Bash(git push *)",
       "Bash(xargs grep -l 'createClient\\(\\)')",
       "Bash(npm install *)",
-      "Bash(npx prisma *)"
+      "Bash(npx prisma *)",
+      "Bash(cd \"c:\\\\Users\\\\silvian.cedru\\\\Documents\\\\Americas IT\\\\TravelExpenseApp\" && sed -i 's/perDiemRate.findUnique\\({ where: { area:/perDiemRate.findFirst\\({ where: { area:/g' src/app/api/forms/\\\\[id\\\\]/pre-trip/route.ts)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\silvian.cedru\\Documents\\Americas IT\\TravelExpenseApp\\src\\app\\api\\forms\\[id]\\pre-trip"
     ]
   }
 }
