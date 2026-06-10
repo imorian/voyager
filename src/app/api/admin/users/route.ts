@@ -39,7 +39,8 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback?token=${authData.user?.confirmation_token}`;
+  // Supabase already sends the invite email; optionally send a branded one too
+  const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`;
   const { subject, html } = userInviteEmail(inviteUrl);
   await sendEmail(body.email, subject, html, "", user.id, "USER_INVITED");
 
