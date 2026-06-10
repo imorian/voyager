@@ -17,13 +17,15 @@ export function AdminRatesClient({ rates }: Props) {
   const router = useRouter();
   const [editing, setEditing] = useState<any | null>(null);
   const [form, setForm] = useState<any>(EMPTY);
+  const [showDialog, setShowDialog] = useState(false);
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
 
-  function openCreate() { setEditing(null); setForm(EMPTY); }
+  function openCreate() { setEditing(null); setForm(EMPTY); setShowDialog(true); }
   function openEdit(r: any) {
     setEditing(r);
     setForm({ city: r.city ?? "", state: r.state ?? "", country: r.country ?? "US", usdPerDay: String(Number(r.usdPerDay)) });
+    setShowDialog(true);
   }
 
   async function save() {
@@ -40,6 +42,7 @@ export function AdminRatesClient({ rates }: Props) {
       toast({ title: editing ? "Rate updated" : "Rate added" });
       setEditing(null);
       setForm(EMPTY);
+      setShowDialog(false);
       router.refresh();
     } else {
       const e = await res.json();
@@ -140,7 +143,7 @@ export function AdminRatesClient({ rates }: Props) {
       )}
 
       {/* Add / Edit dialog */}
-      <Dialog open={form !== EMPTY || !!editing} onOpenChange={(o) => { if (!o) { setEditing(null); setForm(EMPTY); } }}>
+      <Dialog open={showDialog} onOpenChange={(o) => { if (!o) { setEditing(null); setForm(EMPTY); setShowDialog(false); } }}>
         <DialogContent className="max-w-sm">
           <DialogHeader><DialogTitle>{editing ? "Edit Rate" : "Add City Rate"}</DialogTitle></DialogHeader>
           <div className="space-y-3">
@@ -168,7 +171,7 @@ export function AdminRatesClient({ rates }: Props) {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setEditing(null); setForm(EMPTY); }}>Cancel</Button>
+            <Button variant="outline" onClick={() => { setEditing(null); setForm(EMPTY); setShowDialog(false); }}>Cancel</Button>
             <Button onClick={save} disabled={loading}>{loading ? "Saving..." : "Save"}</Button>
           </DialogFooter>
         </DialogContent>
