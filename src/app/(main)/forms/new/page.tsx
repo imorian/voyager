@@ -6,7 +6,7 @@ import { generateReferenceNumber } from "@/lib/utils";
 export default async function NewFormPage() {
   const user = await requireUser();
 
-  if (!user.manager_id && user.role === "EMPLOYEE") {
+  if (!user.managerId && user.role === "EMPLOYEE") {
     // Block — manager not set
   }
 
