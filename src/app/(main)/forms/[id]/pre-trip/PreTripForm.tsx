@@ -118,6 +118,7 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
 
   function calcThb(line: any) {
     const amt = Number(line?.amountLocalFx ?? 0);
+    if (isUS) return amt;
     const fx = Number(line?.fxRateBot ?? 0);
     return amt * fx;
   }
