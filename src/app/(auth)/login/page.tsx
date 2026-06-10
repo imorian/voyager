@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { signInAction } from "./action";
+import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,10 +19,14 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError("");
-    const result = await signInAction(email, password);
-    if (result?.error) {
-      setError(result.error);
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      setError(error.message);
       setLoading(false);
+    } else {
+      // Hard navigate so middleware re-runs and reads the fresh session cookie
+      window.location.replace("/dashboard");
     }
   }
 
