@@ -46,7 +46,7 @@ RESEND_FROM_EMAIL=noreply@yourcompany.com
 
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 SEED_ADMIN_EMAIL=your-admin@yourcompany.com
-NEXT_PUBLIC_COMPANY_NAME=Americas IT
+NEXT_PUBLIC_COMPANY_NAME=Voyager
 ```
 
 ---

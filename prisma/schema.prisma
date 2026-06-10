@@ -221,12 +221,15 @@ model ApprovalLog {
 }
 
 model PerDiemRate {
-  id            String           @id @default(cuid())
-  area          CostOfLivingArea @unique
-  usdPerDay     Decimal          @map("usd_per_day")
-  effectiveFrom DateTime         @map("effective_from")
-  updatedBy     String?          @map("updated_by")
-  updatedAt     DateTime         @updatedAt @map("updated_at")
+  id            String            @id @default(cuid())
+  area          CostOfLivingArea?
+  city          String?
+  state         String?
+  country       String?           @default("US")
+  usdPerDay     Decimal           @map("usd_per_day")
+  effectiveFrom DateTime          @map("effective_from")
+  updatedBy     String?           @map("updated_by")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
 
   updater User? @relation(fields: [updatedBy], references: [id])
 
