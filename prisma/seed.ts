@@ -3,18 +3,18 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
-  // Per diem rates
+  // International area rates — use fixed IDs so upsert works without a unique area constraint
   const rates = [
-    { area: "HIGHEST" as const, usdPerDay: 120 },
-    { area: "HIGH" as const, usdPerDay: 100 },
-    { area: "NORMAL" as const, usdPerDay: 80 },
-    { area: "UNSPECIFIED" as const, usdPerDay: 70 },
+    { id: "area-highest", area: "HIGHEST" as const, usdPerDay: 120 },
+    { id: "area-high",    area: "HIGH"    as const, usdPerDay: 100 },
+    { id: "area-normal",  area: "NORMAL"  as const, usdPerDay: 80  },
+    { id: "area-unspec",  area: "UNSPECIFIED" as const, usdPerDay: 70 },
   ];
 
   for (const r of rates) {
     await prisma.perDiemRate.upsert({
-      where: { area: r.area },
-      create: { area: r.area, usdPerDay: r.usdPerDay, effectiveFrom: new Date("2024-01-01") },
+      where: { id: r.id },
+      create: { id: r.id, area: r.area, usdPerDay: r.usdPerDay, effectiveFrom: new Date("2024-01-01") },
       update: { usdPerDay: r.usdPerDay },
     });
   }
