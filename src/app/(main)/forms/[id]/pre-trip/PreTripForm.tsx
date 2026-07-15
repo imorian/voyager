@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Save, Send, AlertCircle } from "lucide-react";
+import { Save, Send, AlertCircle, FlaskConical } from "lucide-react";
 
 interface Props { form: any; user: any; rates: any[]; isReadOnly: boolean }
 
@@ -158,6 +158,56 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
       const err = await res.json();
       toast({ variant: "destructive", title: "Error", description: err.error ?? "Submit failed" });
     }
+  }
+
+  function fillDummy() {
+    setEntity("TH");
+    setValue("purpose", "Business Development");
+    setValue("objective", "Attend annual supplier conference, negotiate Q3 contracts, and conduct site visits with key partners.");
+    setValue("costChargedTo", "BGP-Operations");
+    setValue("costCenter", "CC-1001");
+    setValue("outCity", "New York");
+    setValue("outCountry", "United States");
+    setValue("outAirline", "Thai Airways");
+    setValue("outFlightNo", "TG911");
+    setValue("outDepDate", "2026-08-01");
+    setValue("outDepTime", "23:00");
+    setValue("outArrDate", "2026-08-02");
+    setValue("outArrTime", "06:30");
+    setValue("inCity", "Bangkok");
+    setValue("inCountry", "Thailand");
+    setValue("inAirline", "Thai Airways");
+    setValue("inFlightNo", "TG912");
+    setValue("inDepDate", "2026-08-07");
+    setValue("inDepTime", "11:00");
+    setValue("inArrDate", "2026-08-08");
+    setValue("inArrTime", "23:45");
+    setValue("totalTripDays", 7);
+    setValue("costOfLivingArea", "HIGHEST");
+    setSelectedArea("HIGHEST");
+    setValue("botFxRate", 35.50);
+    // Transportation lines
+    setValue("expenseLines.0.expenseType", "Flight");
+    setValue("expenseLines.0.expenseDate", "2026-08-01");
+    setValue("expenseLines.0.workDetails", "BKK → JFK return ticket");
+    setValue("expenseLines.0.amountLocalFx", 1800);
+    setValue("expenseLines.0.fxRateBot", 35.50);
+    setValue("expenseLines.1.expenseType", "Taxi");
+    setValue("expenseLines.1.expenseDate", "2026-08-02");
+    setValue("expenseLines.1.workDetails", "JFK airport to hotel");
+    setValue("expenseLines.1.amountLocalFx", 80);
+    setValue("expenseLines.1.fxRateBot", 35.50);
+    // Other expense lines
+    setValue("expenseLines.5.expenseType", "Hotel");
+    setValue("expenseLines.5.expenseDate", "2026-08-02");
+    setValue("expenseLines.5.workDetails", "5 nights accommodation NYC");
+    setValue("expenseLines.5.amountLocalFx", 1200);
+    setValue("expenseLines.5.fxRateBot", 35.50);
+    setValue("expenseLines.6.expenseType", "Conference fee");
+    setValue("expenseLines.6.expenseDate", "2026-08-03");
+    setValue("expenseLines.6.workDetails", "Annual supplier summit registration");
+    setValue("expenseLines.6.amountLocalFx", 350);
+    setValue("expenseLines.6.fxRateBot", 35.50);
   }
 
   async function retract() {
@@ -403,6 +453,11 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
       {/* Actions */}
       {!isReadOnly && (
         <div className="flex items-center gap-3 pt-2">
+          {process.env.NODE_ENV === "development" && (
+            <Button type="button" variant="outline" onClick={fillDummy} className="border-dashed border-purple-400 text-purple-600 hover:bg-purple-50">
+              <FlaskConical className="h-4 w-4 mr-2" />Fill Dev Data
+            </Button>
+          )}
           <Button type="button" variant="outline" onClick={handleSubmit(save)} disabled={saving}>
             <Save className="h-4 w-4 mr-2" />{saving ? "Saving..." : "Save Draft"}
           </Button>
