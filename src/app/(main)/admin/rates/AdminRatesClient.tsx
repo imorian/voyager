@@ -94,6 +94,7 @@ export function AdminRatesClient({ rates }: Props) {
 
   async function syncGsa() {
     setSyncing(true);
+    toast({ title: `Syncing GSA rates for FY${syncYear}…`, description: "Fetching all CONUS cities, this takes 15–20 seconds." });
     const res = await fetch("/api/admin/rates/sync-gsa", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -102,7 +103,7 @@ export function AdminRatesClient({ rates }: Props) {
     setSyncing(false);
     if (res.ok) {
       const { synced } = await res.json();
-      toast({ title: `GSA sync complete — ${synced} city rates imported for FY${syncYear}` });
+      toast({ title: `GSA sync complete ✓`, description: `${synced} city rates imported for FY${syncYear}` });
       router.refresh();
     } else {
       const e = await res.json();
@@ -121,6 +122,16 @@ export function AdminRatesClient({ rates }: Props) {
         <h1 className="text-2xl font-bold">Per Diem Rates</h1>
         <p className="text-sm text-gray-500">GSA-compliant rates for tax purposes. Rate changes apply to new submissions only.</p>
       </div>
+
+      {syncing && (
+        <div className="flex items-center gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg text-blue-800">
+          <RefreshCw className="h-5 w-5 animate-spin shrink-0" />
+          <div>
+            <p className="font-medium">Syncing GSA rates for FY{syncYear}…</p>
+            <p className="text-sm text-blue-600">Fetching all US cities from the GSA API. Please wait, this takes 15–20 seconds.</p>
+          </div>
+        </div>
+      )}
 
       {/* City-based US rates */}
       <div className="space-y-3">
