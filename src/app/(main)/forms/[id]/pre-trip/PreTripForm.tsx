@@ -110,6 +110,11 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
     }
   }, [watchArea, selectedRateId, isUS, rates]);
 
+  useEffect(() => {
+    setValue("costChargedTo", entity === "US" ? "BGP Holding (US) LLC" : "B.Grimm Power PCL");
+    setValue("costCenter", user.department ?? "");
+  }, [entity]);
+
   const perDiemUsd = Number(watchDays) * perDiemRate;
   const perDiemThb = perDiemUsd * Number(watchFxRate);
 
@@ -338,7 +343,6 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
           <F label="Objective" error={errors.objective?.message}>
             <Textarea {...register("objective")} rows={4} placeholder="Describe objective, inviting organisation, need for trip, business benefits..." disabled={isReadOnly} />
           </F>
-          <p className="text-xs text-gray-500 italic">The accommodation rate is inclusive of breakfast and applicable tax(es).</p>
         </CardContent>
       </Card>
 
