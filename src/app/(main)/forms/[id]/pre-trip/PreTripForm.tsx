@@ -522,9 +522,9 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
                 <table className="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
                   <thead className="bg-gray-50 border-b">
                     <tr>
+                      <th className="text-center px-4 py-2 font-medium text-gray-700 w-28">Days</th>
                       <th className="text-left px-4 py-2 font-medium text-gray-700">Rate Type</th>
                       <th className="text-right px-4 py-2 font-medium text-gray-700">$/Day</th>
-                      <th className="text-center px-4 py-2 font-medium text-gray-700 w-28">Days</th>
                       <th className="text-right px-4 py-2 font-medium text-gray-700">Subtotal</th>
                       <th className="text-left px-4 py-2 text-xs text-gray-400 font-normal">When to use</th>
                     </tr>
@@ -532,8 +532,6 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
                   <tbody className="divide-y divide-gray-100">
                     {rows.map(({ key, label, rate, hint, bg }) => (
                       <tr key={key} className={bg}>
-                        <td className="px-4 py-2 font-medium">{label}</td>
-                        <td className="px-4 py-2 text-right font-mono">${rate.toFixed(0)}</td>
                         <td className="px-4 py-2 text-center">
                           {isReadOnly ? (
                             <span>{miedays[key]}</span>
@@ -548,6 +546,8 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
                             />
                           )}
                         </td>
+                        <td className="px-4 py-2 font-medium">{label}</td>
+                        <td className="px-4 py-2 text-right font-mono">${rate.toFixed(0)}</td>
                         <td className="px-4 py-2 text-right font-mono">
                           {miedays[key] > 0 ? `$${(miedays[key] * rate).toFixed(0)}` : "—"}
                         </td>
@@ -557,8 +557,8 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
                   </tbody>
                   <tfoot className="border-t-2 border-gray-300 bg-gray-50">
                     <tr>
-                      <td className="px-4 py-2 font-bold" colSpan={2}>Total ({totalDays} days)</td>
                       <td className="px-4 py-2 text-center font-bold">{totalDays}</td>
+                      <td className="px-4 py-2 font-bold" colSpan={2}>Total ({totalDays} days)</td>
                       <td className="px-4 py-2 text-right font-bold text-blue-700">${mieTotalUsd.toFixed(0)}</td>
                       <td />
                     </tr>
