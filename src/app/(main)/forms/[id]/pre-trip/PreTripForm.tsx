@@ -33,6 +33,7 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
   const [citySearch, setCitySearch] = useState<string>(form.outCity ?? "");
   const [selectedRateId, setSelectedRateId] = useState<string>(form.perDiemRateId ?? "");
   const [selectedRate, setSelectedRate] = useState<any>(null);
+  const [miedays, setMieDays] = useState({ full: 0, firstLast: 0, noBreakfast: 0, noLunch: 0, noDinner: 0 });
 
   const isUS = entity === "US";
 
@@ -481,55 +482,84 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
           </div>
           <p className="text-xs text-gray-500">Counting from first to last day, overnight stays only</p>
 
-          {/* M&IE Breakdown table — shown when a US city rate is selected */}
-          {isUS && selectedRate?.mieTotal && (
-            <div className="mt-2">
-              <p className="text-sm font-semibold mb-2 text-gray-700">M&IE Breakdown (for partial-day deductions)</p>
-              <div className="overflow-x-auto">
+          {/* Interactive M&IE day calculator */}
+          {isUS && selectedRate?.mieTotal && (() => {
+            const r = selectedRate;
+            const full = Number(r.mieTotal);
+            const firstLast = Number(r.mieFirstLast);
+            const noBreakfast = full - Number(r.mieBreakfast);
+            const noLunch = full - Number(r.mieLunch);
+            const noDinner = full - Number(r.mieDinner);
+            const mieTotal =
+              miedays.full * full +
+              miedays.firstLast * firstLast +
+              miedays.noBreakfast * noBreakfast +
+              miedays.noLunch * noLunch +
+              miedays.noDinner * noDinner;
+            const totalDays = Object.values(miedays).reduce((a, b) => a + b, 0);
+
+            const rows: { key: keyof typeof miedays; label: string; rate: number; hint: string; bg: string }[] = [
+              { key: "full",        label: "Full Day",                rate: full,        hint: "No meals provided",              bg: "bg-blue-50" },
+              { key: "firstLast",   label: "First & Last Day (75%)", rate: firstLast,   hint: "Departure & return days",        bg: "bg-amber-50" },
+              { key: "noBreakfast", label: "Without Breakfast",      rate: noBreakfast, hint: "Breakfast provided by hotel",    bg: "" },
+              { key: "noLunch",     label: "Without Lunch",          rate: noLunch,     hint: "Lunch provided by host",         bg: "" },
+              { key: "noDinner",    label: "Without Dinner",         rate: noDinner,    hint: "Dinner provided by host",        bg: "" },
+            ];
+
+            return (
+              <div className="mt-2 space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-gray-700">M&IE Per Diem Calculator</p>
+                  <p className="text-xs text-gray-400">Breakdown: B ${Number(r.mieBreakfast).toFixed(0)} · L ${Number(r.mieLunch).toFixed(0)} · D ${Number(r.mieDinner).toFixed(0)} · Inc ${Number(r.mieIncidental).toFixed(0)}</p>
+                </div>
                 <table className="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
                   <thead className="bg-gray-50 border-b">
                     <tr>
                       <th className="text-left px-4 py-2 font-medium text-gray-700">Rate Type</th>
-                      <th className="text-right px-4 py-2 font-medium text-gray-700">Amount</th>
-                      <th className="text-left px-4 py-2 font-medium text-gray-500 text-xs">When to use</th>
+                      <th className="text-right px-4 py-2 font-medium text-gray-700">$/Day</th>
+                      <th className="text-center px-4 py-2 font-medium text-gray-700 w-28">Days</th>
+                      <th className="text-right px-4 py-2 font-medium text-gray-700">Subtotal</th>
+                      <th className="text-left px-4 py-2 text-xs text-gray-400 font-normal">When to use</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    <tr className="bg-blue-50">
-                      <td className="px-4 py-2 font-semibold">Full Day Per Diem</td>
-                      <td className="px-4 py-2 text-right font-bold">${Number(selectedRate.mieTotal).toFixed(0)}</td>
-                      <td className="px-4 py-2 text-xs text-gray-500">No meals provided</td>
-                    </tr>
-                    <tr className="bg-amber-50">
-                      <td className="px-4 py-2 font-semibold">First & Last Day (75%)</td>
-                      <td className="px-4 py-2 text-right font-bold">${Number(selectedRate.mieFirstLast).toFixed(0)}</td>
-                      <td className="px-4 py-2 text-xs text-gray-500">Departure & return days</td>
-                    </tr>
-                    <tr>
-                      <td className="px-4 py-2 text-gray-600">Full Day minus Breakfast</td>
-                      <td className="px-4 py-2 text-right">${(Number(selectedRate.mieTotal) - Number(selectedRate.mieBreakfast)).toFixed(0)}</td>
-                      <td className="px-4 py-2 text-xs text-gray-500">Breakfast provided (e.g. hotel included)</td>
-                    </tr>
-                    <tr>
-                      <td className="px-4 py-2 text-gray-600">Full Day minus Lunch</td>
-                      <td className="px-4 py-2 text-right">${(Number(selectedRate.mieTotal) - Number(selectedRate.mieLunch)).toFixed(0)}</td>
-                      <td className="px-4 py-2 text-xs text-gray-500">Lunch provided by host</td>
-                    </tr>
-                    <tr>
-                      <td className="px-4 py-2 text-gray-600">Full Day minus Dinner</td>
-                      <td className="px-4 py-2 text-right">${(Number(selectedRate.mieTotal) - Number(selectedRate.mieDinner)).toFixed(0)}</td>
-                      <td className="px-4 py-2 text-xs text-gray-500">Dinner provided by host</td>
-                    </tr>
-                    <tr className="bg-gray-50 text-xs text-gray-500">
-                      <td className="px-4 py-2 pl-6" colSpan={3}>
-                        Breakdown: Breakfast ${Number(selectedRate.mieBreakfast).toFixed(0)} · Lunch ${Number(selectedRate.mieLunch).toFixed(0)} · Dinner ${Number(selectedRate.mieDinner).toFixed(0)} · Incidentals ${Number(selectedRate.mieIncidental).toFixed(0)}
-                      </td>
-                    </tr>
+                    {rows.map(({ key, label, rate, hint, bg }) => (
+                      <tr key={key} className={bg}>
+                        <td className="px-4 py-2 font-medium">{label}</td>
+                        <td className="px-4 py-2 text-right font-mono">${rate.toFixed(0)}</td>
+                        <td className="px-4 py-2 text-center">
+                          {isReadOnly ? (
+                            <span>{miedays[key]}</span>
+                          ) : (
+                            <input
+                              type="number"
+                              min={0}
+                              value={miedays[key] || ""}
+                              placeholder="0"
+                              onChange={(e) => setMieDays((prev) => ({ ...prev, [key]: Math.max(0, Number(e.target.value) || 0) }))}
+                              className="w-16 text-center border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
+                            />
+                          )}
+                        </td>
+                        <td className="px-4 py-2 text-right font-mono">
+                          {miedays[key] > 0 ? `$${(miedays[key] * rate).toFixed(0)}` : "—"}
+                        </td>
+                        <td className="px-4 py-2 text-xs text-gray-400">{hint}</td>
+                      </tr>
+                    ))}
                   </tbody>
+                  <tfoot className="border-t-2 border-gray-300 bg-gray-50">
+                    <tr>
+                      <td className="px-4 py-2 font-bold" colSpan={2}>Total ({totalDays} days)</td>
+                      <td className="px-4 py-2 text-center font-bold">{totalDays}</td>
+                      <td className="px-4 py-2 text-right font-bold text-blue-700">${mieTotal.toFixed(0)}</td>
+                      <td />
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
-            </div>
-          )}
+            );
+          })()}
         </CardContent>
       </Card>
 
