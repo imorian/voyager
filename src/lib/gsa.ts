@@ -85,7 +85,9 @@ function parseLodgingByMonth(months: any[]): Record<string, number | null> {
 }
 
 async function fetchStateRates(state: string, year: number): Promise<GsaCityRate[]> {
-  const res = await fetch(`${GSA_BASE}/rates/state/${state}/year/${year}`, {
+  const apiKey = process.env.GSA_API_KEY;
+  const url = `${GSA_BASE}/rates/state/${state}/year/${year}${apiKey ? `?api_key=${apiKey}` : ""}`;
+  const res = await fetch(url, {
     headers: { Accept: "application/json" },
     next: { revalidate: 0 },
   });
