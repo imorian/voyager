@@ -93,12 +93,15 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
   const cityRates = rates.filter((r: any) => r.city);
   const areaRates = rates.filter((r: any) => r.area);
 
+  const nonStandardRates = cityRates.filter((r: any) => !r.city?.toLowerCase().includes("standard"));
+  const standardRate = cityRates.find((r: any) => r.city?.toLowerCase().includes("standard"));
+
   const filteredCityRates = citySearch.trim().length > 0
-    ? cityRates.filter((r: any) =>
+    ? nonStandardRates.filter((r: any) =>
         r.city.toLowerCase().includes(citySearch.toLowerCase()) ||
         r.state.toLowerCase().includes(citySearch.toLowerCase())
       )
-    : cityRates;
+    : nonStandardRates;
 
   useEffect(() => {
     if (isUS) {
@@ -424,7 +427,6 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
                   </div>
                 )}
                 {citySearch && !isReadOnly && !selectedRateId && filteredCityRates.length === 0 && citySearch.length >= 2 && (() => {
-                  const standardRate = cityRates.find((r: any) => r.city?.toLowerCase() === "standard");
                   return (
                     <div className="px-1 space-y-1">
                       <p className="text-xs text-gray-400">
@@ -434,7 +436,7 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
                         <button
                           type="button"
                           className="text-xs text-blue-600 hover:underline font-medium"
-                          onClick={() => { setSelectedRateId(standardRate.id); setCitySearch(`${citySearch} (Standard Rate)`); setPerDiemRate(Number(standardRate.usdPerDay)); }}
+                          onClick={() => { setSelectedRateId(standardRate!.id); setCitySearch(`${citySearch} (Standard Rate)`); setPerDiemRate(Number(standardRate!.usdPerDay)); }}
                         >
                           Use Standard CONUS Rate — ${Number(standardRate.usdPerDay).toFixed(0)}/day M&IE
                         </button>
