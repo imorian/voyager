@@ -50,7 +50,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   };
 
   if (action === "SUBMIT") {
-    if (!dbUser.managerId) return NextResponse.json({ error: "Your manager is not set up yet. Contact your admin." }, { status: 400 });
+    if (!dbUser.managerId && dbUser.role !== "ADMIN") return NextResponse.json({ error: "Your manager is not set up yet. Contact your admin." }, { status: 400 });
 
     // Snapshot employee info
     toUpdate.empIdSnap = dbUser.empId;
@@ -113,7 +113,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
   });
 
-  // Send email to manager
   if (action === "SUBMIT" && dbUser.managerId) {
     const manager = await prisma.user.findUnique({ where: { id: dbUser.managerId } });
     if (manager) {
