@@ -453,7 +453,7 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
       {/* Actions */}
       {!isReadOnly && (
         <div className="flex items-center gap-3 pt-2">
-          {process.env.NODE_ENV === "development" && (
+          {process.env.NEXT_PUBLIC_DEV_TOOLS === "true" && (
             <Button type="button" variant="outline" onClick={fillDummy} className="border-dashed border-purple-400 text-purple-600 hover:bg-purple-50">
               <FlaskConical className="h-4 w-4 mr-2" />Fill Dev Data
             </Button>
