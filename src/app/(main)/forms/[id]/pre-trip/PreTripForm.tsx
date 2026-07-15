@@ -423,9 +423,25 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
                     ))}
                   </div>
                 )}
-                {citySearch && !isReadOnly && !selectedRateId && filteredCityRates.length === 0 && citySearch.length >= 2 && (
-                  <p className="text-xs text-gray-400 px-1">No city rates found. Ask admin to sync GSA rates.</p>
-                )}
+                {citySearch && !isReadOnly && !selectedRateId && filteredCityRates.length === 0 && citySearch.length >= 2 && (() => {
+                  const standardRate = cityRates.find((r: any) => r.city?.toLowerCase() === "standard");
+                  return (
+                    <div className="px-1 space-y-1">
+                      <p className="text-xs text-gray-400">
+                        This city may not have a specific GSA rate. Cities within unlisted counties use the standard CONUS rate.
+                      </p>
+                      {standardRate && (
+                        <button
+                          type="button"
+                          className="text-xs text-blue-600 hover:underline font-medium"
+                          onClick={() => { setSelectedRateId(standardRate.id); setCitySearch(`${citySearch} (Standard Rate)`); setPerDiemRate(Number(standardRate.usdPerDay)); }}
+                        >
+                          Use Standard CONUS Rate — ${Number(standardRate.usdPerDay).toFixed(0)}/day M&IE
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             ) : (
               <F label="Area">
