@@ -120,7 +120,18 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
     setValue("costCenter", user.department ?? "");
   }, [entity]);
 
-  const perDiemUsd = Number(watchDays) * perDiemRate;
+  const mieTotalUsd = isUS && selectedRate?.mieTotal
+    ? (() => {
+        const r = selectedRate;
+        const full = Number(r.mieTotal);
+        const firstLast = Number(r.mieFirstLast);
+        const noBreakfast = full - Number(r.mieBreakfast);
+        const noLunch = full - Number(r.mieLunch);
+        const noDinner = full - Number(r.mieDinner);
+        return miedays.full * full + miedays.firstLast * firstLast + miedays.noBreakfast * noBreakfast + miedays.noLunch * noLunch + miedays.noDinner * noDinner;
+      })()
+    : 0;
+  const perDiemUsd = isUS ? mieTotalUsd : Number(watchDays) * perDiemRate;
   const perDiemThb = perDiemUsd * Number(watchFxRate);
 
   const transportLines = watchLines.slice(0, 5);
@@ -390,9 +401,11 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
         <CardHeader><CardTitle>Section 5 — Estimated Per Diem (Overnight Stay Only)</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 items-end">
-            <F label="Total Days on Trip">
-              <Input type="number" min={0} {...register("totalTripDays")} disabled={isReadOnly} />
-            </F>
+            {!isUS && (
+              <F label="Total Days on Trip">
+                <Input type="number" min={0} {...register("totalTripDays")} disabled={isReadOnly} />
+              </F>
+            )}
 
             {isUS ? (
               <div className="col-span-2 space-y-1">
@@ -490,12 +503,6 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
             const noBreakfast = full - Number(r.mieBreakfast);
             const noLunch = full - Number(r.mieLunch);
             const noDinner = full - Number(r.mieDinner);
-            const mieTotal =
-              miedays.full * full +
-              miedays.firstLast * firstLast +
-              miedays.noBreakfast * noBreakfast +
-              miedays.noLunch * noLunch +
-              miedays.noDinner * noDinner;
             const totalDays = Object.values(miedays).reduce((a, b) => a + b, 0);
 
             const rows: { key: keyof typeof miedays; label: string; rate: number; hint: string; bg: string }[] = [
@@ -552,7 +559,7 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
                     <tr>
                       <td className="px-4 py-2 font-bold" colSpan={2}>Total ({totalDays} days)</td>
                       <td className="px-4 py-2 text-center font-bold">{totalDays}</td>
-                      <td className="px-4 py-2 text-right font-bold text-blue-700">${mieTotal.toFixed(0)}</td>
+                      <td className="px-4 py-2 text-right font-bold text-blue-700">${mieTotalUsd.toFixed(0)}</td>
                       <td />
                     </tr>
                   </tfoot>
