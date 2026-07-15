@@ -388,12 +388,22 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
             {isUS ? (
               <div className="col-span-2 space-y-1">
                 <Label>City (US Per Diem)</Label>
-                <Input
-                  placeholder="Search city or state..."
-                  value={citySearch}
-                  onChange={(e) => { setCitySearch(e.target.value); setSelectedRateId(""); setPerDiemRate(0); }}
-                  disabled={isReadOnly}
-                />
+                <div className="relative">
+                  <Input
+                    placeholder="Search city or state..."
+                    value={citySearch}
+                    onChange={(e) => { setCitySearch(e.target.value); setSelectedRateId(""); setPerDiemRate(0); }}
+                    disabled={isReadOnly}
+                    className={selectedRateId ? "pr-8 border-green-400 bg-green-50" : ""}
+                  />
+                  {selectedRateId && !isReadOnly && (
+                    <button
+                      type="button"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg leading-none"
+                      onClick={() => { setSelectedRateId(""); setCitySearch(""); setPerDiemRate(0); }}
+                    >×</button>
+                  )}
+                </div>
                 {citySearch && !isReadOnly && filteredCityRates.length > 0 && !selectedRateId && (
                   <div className="border rounded-md bg-white shadow-sm max-h-40 overflow-y-auto z-10 relative">
                     {filteredCityRates.map((r: any) => (
@@ -409,8 +419,8 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
                     ))}
                   </div>
                 )}
-                {citySearch && !isReadOnly && filteredCityRates.length === 0 && (
-                  <p className="text-xs text-gray-400 px-1">No city rates found. Ask admin to add this city.</p>
+                {citySearch && !isReadOnly && !selectedRateId && filteredCityRates.length === 0 && citySearch.length >= 2 && (
+                  <p className="text-xs text-gray-400 px-1">No city rates found. Ask admin to sync GSA rates.</p>
                 )}
               </div>
             ) : (
