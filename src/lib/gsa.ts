@@ -95,10 +95,16 @@ async function fetchStateRates(state: string, year: number): Promise<GsaCityRate
   const data = await res.json();
   const results: GsaCityRate[] = [];
 
-  for (const stateGroup of data.rates ?? []) {
+  // API returns rates as a flat array with one entry per state group
+  // each entry has a rate[] array of cities
+  const stateGroups = data.rates ?? [];
+  for (const stateGroup of stateGroups) {
+    const stateCode: string = stateGroup.state ?? state;
+    const fiscalYear: number = Number(stateGroup.year ?? year);
     for (const r of stateGroup.rate ?? []) {
-      const mieTotal: number = Number(r.total ?? r.meals ?? 0);
-      if (!mieTotal) continue;
+      // meals = M&IE total (already includes incidentals in GSA v2)
+      const mieTotal: number = Number(r.meals ?? 0);
+      if (!mieTotal || !r.city) continue;
 
       const firstLast = Math.round(mieTotal * 0.75);
       const breakdown = getMieBreakdown(mieTotal);
@@ -106,8 +112,8 @@ async function fetchStateRates(state: string, year: number): Promise<GsaCityRate
 
       results.push({
         city: r.city,
-        state: stateGroup.state ?? state,
-        fiscalYear: Number(stateGroup.year ?? year),
+        state: stateCode,
+        fiscalYear,
         lodgingJan: lodging["Jan"] ?? null,
         lodgingFeb: lodging["Feb"] ?? null,
         lodgingMar: lodging["Mar"] ?? null,
