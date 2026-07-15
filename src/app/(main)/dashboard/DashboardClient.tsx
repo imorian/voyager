@@ -6,7 +6,6 @@ import { Plus, Download, Eye, FileText, Trash2 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatDate, formatCurrency } from "@/lib/utils";
@@ -25,6 +24,8 @@ export function DashboardClient({ forms, user, stats }: Props) {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   async function deleteForm(id: string, ref: string) {
     if (!confirm(`Delete ${ref}? This cannot be undone.`)) return;
@@ -37,6 +38,17 @@ export function DashboardClient({ forms, user, stats }: Props) {
     } else {
       toast({ variant: "destructive", title: "Failed to delete" });
     }
+  }
+
+  async function deleteSelected() {
+    if (!confirm(`Delete ${selected.size} form(s)? This cannot be undone.`)) return;
+    setBulkDeleting(true);
+    const ids = Array.from(selected);
+    await Promise.all(ids.map((id) => fetch(`/api/forms/${id}`, { method: "DELETE" })));
+    setBulkDeleting(false);
+    setSelected(new Set());
+    toast({ title: `${ids.length} form(s) deleted` });
+    router.refresh();
   }
 
   const filtered = forms.filter((f) => {
@@ -58,6 +70,24 @@ export function DashboardClient({ forms, user, stats }: Props) {
     return matchSearch && matchStatus && matchDate;
   });
 
+  const allSelected = filtered.length > 0 && filtered.every((f) => selected.has(f.id));
+
+  function toggleAll() {
+    if (allSelected) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(filtered.map((f) => f.id)));
+    }
+  }
+
+  function toggleOne(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
   function preStatus(f: any) {
     if (["DRAFT"].includes(f.status)) return "DRAFT";
     if (["PRE_SUBMITTED", "POST_DRAFT", "POST_SUBMITTED", "POST_APPROVED", "POST_REJECTED", "PRE_APPROVED"].includes(f.status)) {
@@ -72,6 +102,8 @@ export function DashboardClient({ forms, user, stats }: Props) {
     if (["DRAFT", "PRE_SUBMITTED", "PRE_APPROVED", "PRE_REJECTED"].includes(f.status)) return "POST_DRAFT";
     return f.status;
   }
+
+  const isAdmin = user.role === "ADMIN";
 
   return (
     <div className="space-y-6">
@@ -126,9 +158,23 @@ export function DashboardClient({ forms, user, stats }: Props) {
             <SelectItem value="REJECTED">Rejected</SelectItem>
           </SelectContent>
         </Select>
-        <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-40" placeholder="From" />
-        <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-40" placeholder="To" />
+        <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-40" />
+        <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-40" />
       </div>
+
+      {/* Bulk action bar */}
+      {isAdmin && selected.size > 0 && (
+        <div className="flex items-center gap-3 px-4 py-2 bg-red-50 border border-red-200 rounded-lg">
+          <span className="text-sm font-medium text-red-700">{selected.size} form(s) selected</span>
+          <Button size="sm" variant="destructive" onClick={deleteSelected} disabled={bulkDeleting}>
+            <Trash2 className="h-4 w-4 mr-1" />
+            {bulkDeleting ? "Deleting…" : "Delete selected"}
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setSelected(new Set())}>
+            Clear selection
+          </Button>
+        </div>
+      )}
 
       {/* Table */}
       <div className="bg-white rounded-lg border overflow-hidden">
@@ -136,6 +182,16 @@ export function DashboardClient({ forms, user, stats }: Props) {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b">
               <tr>
+                {isAdmin && (
+                  <th className="px-4 py-3 w-10">
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      onChange={toggleAll}
+                      className="h-4 w-4 rounded border-gray-300 cursor-pointer"
+                    />
+                  </th>
+                )}
                 <th className="text-left px-4 py-3 font-medium text-gray-700">Reference</th>
                 {user.role !== "EMPLOYEE" && <th className="text-left px-4 py-3 font-medium text-gray-700">Employee</th>}
                 <th className="text-left px-4 py-3 font-medium text-gray-700">Destination</th>
@@ -150,14 +206,24 @@ export function DashboardClient({ forms, user, stats }: Props) {
             <tbody className="divide-y divide-gray-100">
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="text-center py-12 text-gray-400">
+                  <td colSpan={isAdmin ? 10 : 9} className="text-center py-12 text-gray-400">
                     <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
                     No forms found
                   </td>
                 </tr>
               )}
               {filtered.map((f) => (
-                <tr key={f.id} className="hover:bg-gray-50">
+                <tr key={f.id} className={`hover:bg-gray-50 ${selected.has(f.id) ? "bg-red-50" : ""}`}>
+                  {isAdmin && (
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={selected.has(f.id)}
+                        onChange={() => toggleOne(f.id)}
+                        className="h-4 w-4 rounded border-gray-300 cursor-pointer"
+                      />
+                    </td>
+                  )}
                   <td className="px-4 py-3 font-mono text-blue-600">
                     <Link href={`/forms/${f.id}`} className="hover:underline">{f.referenceNumber}</Link>
                   </td>
@@ -167,12 +233,8 @@ export function DashboardClient({ forms, user, stats }: Props) {
                     {f.outDepDate ? `${formatDate(f.outDepDate)} → ${formatDate(f.inArrDate)}` : "—"}
                   </td>
                   <td className="px-4 py-3 max-w-[200px] truncate">{f.purpose ?? "—"}</td>
-                  <td className="px-4 py-3">
-                    <StatusBadge status={preStatus(f)} />
-                  </td>
-                  <td className="px-4 py-3">
-                    <StatusBadge status={postStatus(f)} />
-                  </td>
+                  <td className="px-4 py-3"><StatusBadge status={preStatus(f)} /></td>
+                  <td className="px-4 py-3"><StatusBadge status={postStatus(f)} /></td>
                   <td className="px-4 py-3 text-right">
                     {f.status === "POST_APPROVED" && f.postGrandTotalThb
                       ? formatCurrency(Number(f.postGrandTotalThb))
@@ -188,7 +250,7 @@ export function DashboardClient({ forms, user, stats }: Props) {
                           <Link href={`/forms/${f.id}/pdf`}><Download className="h-4 w-4" /></Link>
                         </Button>
                       )}
-                      {user.role === "ADMIN" && (
+                      {isAdmin && (
                         <Button variant="ghost" size="sm" onClick={() => deleteForm(f.id, f.referenceNumber)} disabled={deleting === f.id}>
                           <Trash2 className="h-4 w-4 text-red-500" />
                         </Button>
