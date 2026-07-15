@@ -10,20 +10,23 @@ export default async function NewFormPage() {
     // Block — manager not set
   }
 
-  // Count forms this year to generate reference number
   const year = new Date().getFullYear();
-  const count = await prisma.tripForm.count({
-    where: { referenceNumber: { startsWith: `OBT-${year}-` } },
-  });
-  const referenceNumber = generateReferenceNumber(year, count + 1);
-
-  const form = await prisma.tripForm.create({
-    data: {
-      referenceNumber,
-      employeeId: user.id,
-      status: "DRAFT",
-    },
-  });
+  let form: any = null;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const count = await prisma.tripForm.count({
+      where: { referenceNumber: { startsWith: `OBT-${year}-` } },
+    });
+    const referenceNumber = generateReferenceNumber(year, count + 1 + attempt);
+    try {
+      form = await prisma.tripForm.create({
+        data: { referenceNumber, employeeId: user.id, status: "DRAFT" },
+      });
+      break;
+    } catch (e: any) {
+      if (e.code !== "P2002") throw e; // only retry on unique constraint violation
+    }
+  }
+  if (!form) throw new Error("Failed to generate unique reference number");
 
   redirect(`/forms/${form.id}/pre-trip`);
 }
