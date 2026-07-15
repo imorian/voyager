@@ -34,6 +34,8 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
   const [selectedRateId, setSelectedRateId] = useState<string>(form.perDiemRateId ?? "");
   const [selectedRate, setSelectedRate] = useState<any>(null);
   const [miedays, setMieDays] = useState({ full: 0, firstLast: 0, noBreakfast: 0, noLunch: 0, noDinner: 0 });
+  const [zipLookupResult, setZipLookupResult] = useState<any>(null);
+  const [zipLooking, setZipLooking] = useState(false);
 
   const isUS = entity === "US";
 
@@ -409,12 +411,28 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
 
             {isUS ? (
               <div className="col-span-2 space-y-1">
-                <Label>City (US Per Diem)</Label>
+                <Label>City, State, or ZIP (US Per Diem)</Label>
                 <div className="relative">
                   <Input
-                    placeholder="Search city or state..."
+                    placeholder="Search city, state, or ZIP code..."
                     value={citySearch}
-                    onChange={(e) => { setCitySearch(e.target.value); setSelectedRateId(""); setSelectedRate(null); setPerDiemRate(0); }}
+                    onChange={async (e) => {
+                      const val = e.target.value;
+                      setCitySearch(val);
+                      setSelectedRateId("");
+                      setSelectedRate(null);
+                      setPerDiemRate(0);
+                      setZipLookupResult(null);
+                      if (/^\d{5}$/.test(val.trim())) {
+                        setZipLooking(true);
+                        try {
+                          const res = await fetch(`/api/gsa/zip/${val.trim()}`);
+                          if (res.ok) setZipLookupResult(await res.json());
+                          else setZipLookupResult({ error: true });
+                        } catch { setZipLookupResult({ error: true }); }
+                        setZipLooking(false);
+                      }
+                    }}
                     disabled={isReadOnly}
                     className={selectedRateId ? "pr-8 border-green-400 bg-green-50" : ""}
                   />
@@ -422,11 +440,36 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
                     <button
                       type="button"
                       className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg leading-none"
-                      onClick={() => { setSelectedRateId(""); setSelectedRate(null); setCitySearch(""); setPerDiemRate(0); }}
+                      onClick={() => { setSelectedRateId(""); setSelectedRate(null); setCitySearch(""); setPerDiemRate(0); setZipLookupResult(null); }}
                     >×</button>
                   )}
                 </div>
-                {citySearch && !isReadOnly && filteredCityRates.length > 0 && !selectedRateId && (
+                {zipLooking && <p className="text-xs text-gray-400">Looking up ZIP…</p>}
+                {zipLookupResult && !zipLookupResult.error && !selectedRateId && (
+                  <div className="border rounded-md bg-white shadow-sm z-10 relative">
+                    <button
+                      type="button"
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                      onClick={() => {
+                        const r = zipLookupResult;
+                        const syntheticRate = { id: `zip-${r.zip}`, city: r.city, state: r.state, usdPerDay: r.usdPerDay, mieTotal: r.usdPerDay };
+                        setSelectedRateId(`zip-${r.zip}`);
+                        setSelectedRate(syntheticRate);
+                        setCitySearch(`${r.city}, ${r.state} (${r.zip})`);
+                        setPerDiemRate(r.usdPerDay);
+                        setZipLookupResult(null);
+                      }}
+                    >
+                      <span className="font-medium">{zipLookupResult.city}, {zipLookupResult.state}</span>
+                      <span className="ml-2 text-gray-500">${Number(zipLookupResult.usdPerDay).toFixed(0)}/day M&IE</span>
+                      <span className="ml-2 text-xs text-gray-400">ZIP {zipLookupResult.zip}</span>
+                    </button>
+                  </div>
+                )}
+                {zipLookupResult?.error && !selectedRateId && (
+                  <p className="text-xs text-red-400">No GSA rate found for this ZIP code.</p>
+                )}
+                {!zipLookupResult && citySearch && !isReadOnly && filteredCityRates.length > 0 && !selectedRateId && (
                   <div className="border rounded-md bg-white shadow-sm max-h-40 overflow-y-auto z-10 relative">
                     {filteredCityRates.map((r: any) => (
                       <button
@@ -441,7 +484,7 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
                     ))}
                   </div>
                 )}
-                {citySearch && !isReadOnly && !selectedRateId && filteredCityRates.length === 0 && citySearch.length >= 2 && (() => {
+                {!zipLookupResult && citySearch && !isReadOnly && !selectedRateId && filteredCityRates.length === 0 && citySearch.length >= 2 && (() => {
                   return (
                     <div className="px-1 space-y-1">
                       <p className="text-xs text-gray-400">
