@@ -32,6 +32,7 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
   const [perDiemRate, setPerDiemRate] = useState<number>(0);
   const [citySearch, setCitySearch] = useState<string>(form.outCity ?? "");
   const [selectedRateId, setSelectedRateId] = useState<string>(form.perDiemRateId ?? "");
+  const [selectedRate, setSelectedRate] = useState<any>(null);
 
   const isUS = entity === "US";
 
@@ -399,7 +400,7 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
                   <Input
                     placeholder="Search city or state..."
                     value={citySearch}
-                    onChange={(e) => { setCitySearch(e.target.value); setSelectedRateId(""); setPerDiemRate(0); }}
+                    onChange={(e) => { setCitySearch(e.target.value); setSelectedRateId(""); setSelectedRate(null); setPerDiemRate(0); }}
                     disabled={isReadOnly}
                     className={selectedRateId ? "pr-8 border-green-400 bg-green-50" : ""}
                   />
@@ -407,7 +408,7 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
                     <button
                       type="button"
                       className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg leading-none"
-                      onClick={() => { setSelectedRateId(""); setCitySearch(""); setPerDiemRate(0); }}
+                      onClick={() => { setSelectedRateId(""); setSelectedRate(null); setCitySearch(""); setPerDiemRate(0); }}
                     >×</button>
                   )}
                 </div>
@@ -418,7 +419,7 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
                         key={r.id}
                         type="button"
                         className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 border-b last:border-b-0"
-                        onClick={() => { setSelectedRateId(r.id); setCitySearch(`${r.city}, ${r.state}`); setPerDiemRate(Number(r.usdPerDay)); }}
+                        onClick={() => { setSelectedRateId(r.id); setSelectedRate(r); setCitySearch(`${r.city}, ${r.state}`); setPerDiemRate(Number(r.usdPerDay)); }}
                       >
                         <span className="font-medium">{r.city}, {r.state}</span>
                         <span className="ml-2 text-gray-500">${Number(r.usdPerDay).toFixed(0)}/day</span>
@@ -436,7 +437,7 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
                         <button
                           type="button"
                           className="text-xs text-blue-600 hover:underline font-medium"
-                          onClick={() => { setSelectedRateId(standardRate!.id); setCitySearch(`${citySearch} (Standard Rate)`); setPerDiemRate(Number(standardRate!.usdPerDay)); }}
+                          onClick={() => { setSelectedRateId(standardRate!.id); setSelectedRate(standardRate); setCitySearch(`${citySearch} (Standard Rate)`); setPerDiemRate(Number(standardRate!.usdPerDay)); }}
                         >
                           Use Standard CONUS Rate — ${Number(standardRate.usdPerDay).toFixed(0)}/day M&IE
                         </button>
@@ -479,6 +480,56 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
             </div>
           </div>
           <p className="text-xs text-gray-500">Counting from first to last day, overnight stays only</p>
+
+          {/* M&IE Breakdown table — shown when a US city rate is selected */}
+          {isUS && selectedRate?.mieTotal && (
+            <div className="mt-2">
+              <p className="text-sm font-semibold mb-2 text-gray-700">M&IE Breakdown (for partial-day deductions)</p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
+                  <thead className="bg-gray-50 border-b">
+                    <tr>
+                      <th className="text-left px-4 py-2 font-medium text-gray-700">Rate Type</th>
+                      <th className="text-right px-4 py-2 font-medium text-gray-700">Amount</th>
+                      <th className="text-left px-4 py-2 font-medium text-gray-500 text-xs">When to use</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    <tr className="bg-blue-50">
+                      <td className="px-4 py-2 font-semibold">Full Day Per Diem</td>
+                      <td className="px-4 py-2 text-right font-bold">${Number(selectedRate.mieTotal).toFixed(0)}</td>
+                      <td className="px-4 py-2 text-xs text-gray-500">No meals provided</td>
+                    </tr>
+                    <tr className="bg-amber-50">
+                      <td className="px-4 py-2 font-semibold">First & Last Day (75%)</td>
+                      <td className="px-4 py-2 text-right font-bold">${Number(selectedRate.mieFirstLast).toFixed(0)}</td>
+                      <td className="px-4 py-2 text-xs text-gray-500">Departure & return days</td>
+                    </tr>
+                    <tr>
+                      <td className="px-4 py-2 text-gray-600">Full Day minus Breakfast</td>
+                      <td className="px-4 py-2 text-right">${(Number(selectedRate.mieTotal) - Number(selectedRate.mieBreakfast)).toFixed(0)}</td>
+                      <td className="px-4 py-2 text-xs text-gray-500">Breakfast provided (e.g. hotel included)</td>
+                    </tr>
+                    <tr>
+                      <td className="px-4 py-2 text-gray-600">Full Day minus Lunch</td>
+                      <td className="px-4 py-2 text-right">${(Number(selectedRate.mieTotal) - Number(selectedRate.mieLunch)).toFixed(0)}</td>
+                      <td className="px-4 py-2 text-xs text-gray-500">Lunch provided by host</td>
+                    </tr>
+                    <tr>
+                      <td className="px-4 py-2 text-gray-600">Full Day minus Dinner</td>
+                      <td className="px-4 py-2 text-right">${(Number(selectedRate.mieTotal) - Number(selectedRate.mieDinner)).toFixed(0)}</td>
+                      <td className="px-4 py-2 text-xs text-gray-500">Dinner provided by host</td>
+                    </tr>
+                    <tr className="bg-gray-50 text-xs text-gray-500">
+                      <td className="px-4 py-2 pl-6" colSpan={3}>
+                        Breakdown: Breakfast ${Number(selectedRate.mieBreakfast).toFixed(0)} · Lunch ${Number(selectedRate.mieLunch).toFixed(0)} · Dinner ${Number(selectedRate.mieDinner).toFixed(0)} · Incidentals ${Number(selectedRate.mieIncidental).toFixed(0)}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
