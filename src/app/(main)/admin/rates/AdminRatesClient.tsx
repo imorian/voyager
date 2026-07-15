@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/use-toast";
 import { formatDate } from "@/lib/utils";
-import { Edit, Plus, Trash2 } from "lucide-react";
+import { Edit, Plus, RefreshCw, Trash2 } from "lucide-react";
 
 interface Props { rates: any[] }
 
@@ -33,6 +33,8 @@ export function AdminRatesClient({ rates }: Props) {
   const [showDialog, setShowDialog] = useState(false);
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [syncYear, setSyncYear] = useState(new Date().getFullYear());
 
   function openCreate() { setEditing(null); setForm(EMPTY); setShowDialog(true); }
   function openEdit(r: any) {
@@ -90,6 +92,24 @@ export function AdminRatesClient({ rates }: Props) {
     else toast({ variant: "destructive", title: "Failed to delete" });
   }
 
+  async function syncGsa() {
+    setSyncing(true);
+    const res = await fetch("/api/admin/rates/sync-gsa", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ year: syncYear }),
+    });
+    setSyncing(false);
+    if (res.ok) {
+      const { synced } = await res.json();
+      toast({ title: `GSA sync complete — ${synced} city rates imported for FY${syncYear}` });
+      router.refresh();
+    } else {
+      const e = await res.json();
+      toast({ variant: "destructive", title: e.error ?? "GSA sync failed" });
+    }
+  }
+
   const f = (k: string) => ({ value: form[k] ?? "", onChange: (e: any) => setForm((p: any) => ({ ...p, [k]: e.target.value })) });
 
   const cityRates = rates.filter((r) => r.city);
@@ -106,7 +126,24 @@ export function AdminRatesClient({ rates }: Props) {
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">US City Rates (GSA)</h2>
-          <Button size="sm" onClick={openCreate}><Plus className="h-4 w-4 mr-1" />Add City Rate</Button>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
+              <span className="text-sm text-gray-500">FY</span>
+              <Input
+                type="number"
+                className="w-20 h-8 text-sm"
+                value={syncYear}
+                onChange={(e) => setSyncYear(Number(e.target.value))}
+                min={2020}
+                max={2030}
+              />
+            </div>
+            <Button size="sm" variant="outline" onClick={syncGsa} disabled={syncing}>
+              <RefreshCw className={`h-4 w-4 mr-1 ${syncing ? "animate-spin" : ""}`} />
+              {syncing ? "Syncing…" : "Sync GSA Rates"}
+            </Button>
+            <Button size="sm" onClick={openCreate}><Plus className="h-4 w-4 mr-1" />Add City Rate</Button>
+          </div>
         </div>
         {cityRates.length === 0 ? (
           <p className="text-sm text-gray-400">No city rates yet. Add one above.</p>
