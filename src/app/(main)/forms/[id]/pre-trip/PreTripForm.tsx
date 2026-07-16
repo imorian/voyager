@@ -405,11 +405,9 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
         <CardHeader><CardTitle>Section 5 — Estimated Per Diem (Overnight Stay Only)</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 items-end">
-            {!isUS && (
-              <F label="Total Days on Trip">
-                <Input type="number" min={0} {...register("totalTripDays")} disabled={isReadOnly} />
-              </F>
-            )}
+            <F label="Total Days on Trip">
+              <Input type="number" min={0} {...register("totalTripDays")} disabled={isReadOnly} />
+            </F>
 
             {isUS ? (
               <div className="col-span-2 space-y-1">
