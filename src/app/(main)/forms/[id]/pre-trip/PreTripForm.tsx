@@ -595,21 +595,25 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
                     </tr>
                     {deductRows.map(({ key, label, rate, hint }) => {
                       const d = mieDeductions[key] || 0;
+                      const over = days > 0 && d > days;
                       return (
-                        <tr key={key} className={d > 0 ? "bg-red-50/40" : ""}>
+                        <tr key={key} className={over ? "bg-orange-50" : d > 0 ? "bg-red-50/40" : ""}>
                           <td className="px-4 py-2 text-center">
                             {isReadOnly ? <span>{d || "—"}</span> : (
-                              <input
-                                type="number" min={0} max={days} value={d || ""} placeholder="0"
-                                onChange={(e) => setMieDeductions((prev) => ({ ...prev, [key]: Math.max(0, Number(e.target.value) || 0) }))}
-                                className="w-16 text-center border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-red-400"
-                              />
+                              <div>
+                                <input
+                                  type="number" min={0} value={d || ""} placeholder="0"
+                                  onChange={(e) => setMieDeductions((prev) => ({ ...prev, [key]: Math.max(0, Number(e.target.value) || 0) }))}
+                                  className={`w-16 text-center border rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 ${over ? "border-orange-400 focus:ring-orange-400" : "border-gray-300 focus:ring-red-400"}`}
+                                />
+                                {over && <p className="text-xs text-orange-600 mt-0.5 w-20">max {days}</p>}
+                              </div>
                             )}
                           </td>
                           <td className="px-4 py-2 text-red-700">{label}</td>
                           <td className="px-4 py-2 text-right font-mono text-red-600">−${rate.toFixed(0)}</td>
                           <td className="px-4 py-2 text-right font-mono text-red-600">{d > 0 ? `−$${(d * rate).toFixed(0)}` : "—"}</td>
-                          <td className="px-4 py-2 text-xs text-gray-400">{hint}</td>
+                          <td className="px-4 py-2 text-xs text-gray-400">{over ? <span className="text-orange-600 font-medium">⚠ Exceeds total days</span> : hint}</td>
                         </tr>
                       );
                     })}
