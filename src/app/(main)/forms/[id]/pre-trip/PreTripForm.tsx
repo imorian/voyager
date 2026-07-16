@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { PreTripSchema, type PreTripFormData } from "@/lib/validations";
 import { COUNTRIES, TRANSPORT_TYPES } from "@/lib/constants";
+import { getMieBreakdown } from "@/lib/gsa";
 import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -454,7 +455,8 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
                       className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
                       onClick={() => {
                         const r = zipLookupResult;
-                        const syntheticRate = { id: `zip-${r.zip}`, city: r.city, state: r.state, usdPerDay: r.usdPerDay, mieTotal: r.usdPerDay };
+                        const bd = getMieBreakdown(Number(r.usdPerDay));
+                        const syntheticRate = { id: `zip-${r.zip}`, city: r.city, state: r.state, usdPerDay: r.usdPerDay, mieTotal: r.usdPerDay, mieFirstLast: Math.round(r.usdPerDay * 0.75), mieBreakfast: bd.breakfast, mieLunch: bd.lunch, mieDinner: bd.dinner, mieIncidental: bd.incidentals };
                         setSelectedRateId(`zip-${r.zip}`);
                         setSelectedRate(syntheticRate);
                         setCitySearch(`${r.city}, ${r.state} (${r.zip})`);
@@ -478,7 +480,14 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
                         key={r.id}
                         type="button"
                         className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 border-b last:border-b-0"
-                        onClick={() => { setSelectedRateId(r.id); setSelectedRate(r); setCitySearch(`${r.city}, ${r.state}`); setPerDiemRate(Number(r.usdPerDay)); }}
+                        onClick={() => {
+                          const mie = Number(r.mieTotal ?? r.usdPerDay);
+                          const bd = getMieBreakdown(mie);
+                          setSelectedRateId(r.id);
+                          setSelectedRate({ ...r, mieTotal: mie, mieFirstLast: r.mieFirstLast ?? Math.round(mie * 0.75), mieBreakfast: r.mieBreakfast ?? bd.breakfast, mieLunch: r.mieLunch ?? bd.lunch, mieDinner: r.mieDinner ?? bd.dinner, mieIncidental: r.mieIncidental ?? bd.incidentals });
+                          setCitySearch(`${r.city}, ${r.state}`);
+                          setPerDiemRate(Number(r.usdPerDay));
+                        }}
                       >
                         <span className="font-medium">{r.city}, {r.state}</span>
                         <span className="ml-2 text-gray-500">${Number(r.usdPerDay).toFixed(0)}/day</span>
@@ -496,7 +505,15 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
                         <button
                           type="button"
                           className="text-xs text-blue-600 hover:underline font-medium"
-                          onClick={() => { setSelectedRateId(standardRate!.id); setSelectedRate(standardRate); setCitySearch(`${citySearch} (Standard Rate)`); setPerDiemRate(Number(standardRate!.usdPerDay)); }}
+                          onClick={() => {
+                            const sr = standardRate!;
+                            const mie = Number(sr.mieTotal ?? sr.usdPerDay);
+                            const bd = getMieBreakdown(mie);
+                            setSelectedRateId(sr.id);
+                            setSelectedRate({ ...sr, mieTotal: mie, mieFirstLast: sr.mieFirstLast ?? Math.round(mie * 0.75), mieBreakfast: sr.mieBreakfast ?? bd.breakfast, mieLunch: sr.mieLunch ?? bd.lunch, mieDinner: sr.mieDinner ?? bd.dinner, mieIncidental: sr.mieIncidental ?? bd.incidentals });
+                            setCitySearch(`${citySearch} (Standard Rate)`);
+                            setPerDiemRate(Number(sr.usdPerDay));
+                          }}
                         >
                           Use Standard CONUS Rate — ${Number(standardRate.usdPerDay).toFixed(0)}/day M&IE
                         </button>
