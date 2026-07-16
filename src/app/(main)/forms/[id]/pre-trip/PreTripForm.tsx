@@ -603,7 +603,7 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
                               <div>
                                 <input
                                   type="number" min={0} value={d || ""} placeholder="0"
-                                  onChange={(e) => setMieDeductions((prev) => ({ ...prev, [key]: Math.max(0, Number(e.target.value) || 0) }))}
+                                  onChange={(e) => setMieDeductions((prev) => ({ ...prev, [key]: Math.min(days, Math.max(0, Number(e.target.value) || 0)) }))}
                                   className={`w-16 text-center border rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 ${over ? "border-orange-400 focus:ring-orange-400" : "border-gray-300 focus:ring-red-400"}`}
                                 />
                                 {over && <p className="text-xs text-orange-600 mt-0.5 w-20">max {days}</p>}
