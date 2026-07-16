@@ -34,8 +34,7 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
   const [citySearch, setCitySearch] = useState<string>(form.outCity ?? "");
   const [selectedRateId, setSelectedRateId] = useState<string>(form.perDiemRateId ?? "");
   const [selectedRate, setSelectedRate] = useState<any>(null);
-  const EMPTY_MIE_ROW = () => ({ days: 0, noB: false, noL: false, noD: false, firstLast: false });
-  const [mieRows, setMieRows] = useState(() => Array.from({ length: 5 }, EMPTY_MIE_ROW));
+  const [mieDeductions, setMieDeductions] = useState({ firstLast: 0, noBreakfast: 0, noLunch: 0, noDinner: 0 });
   const [zipLookupResult, setZipLookupResult] = useState<any>(null);
   const [zipLooking, setZipLooking] = useState(false);
 
@@ -125,15 +124,16 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
   }, [entity]);
 
   const mieTotalUsd = isUS && selectedRate?.mieTotal
-    ? mieRows.reduce((sum, row) => {
-        if (!row.days) return sum;
+    ? (() => {
         const full = Number(selectedRate.mieTotal);
-        const base = row.firstLast ? Number(selectedRate.mieFirstLast) : full;
-        const deduct = (row.noB ? Number(selectedRate.mieBreakfast) : 0)
-          + (row.noL ? Number(selectedRate.mieLunch) : 0)
-          + (row.noD ? Number(selectedRate.mieDinner) : 0);
-        return sum + row.days * Math.max(0, base - deduct);
-      }, 0)
+        const days = Number(watchDays) || 0;
+        const gross = days * full
+          - mieDeductions.firstLast * (full - Number(selectedRate.mieFirstLast))
+          - mieDeductions.noBreakfast * Number(selectedRate.mieBreakfast)
+          - mieDeductions.noLunch * Number(selectedRate.mieLunch)
+          - mieDeductions.noDinner * Number(selectedRate.mieDinner);
+        return Math.max(0, gross);
+      })()
     : 0;
   const perDiemUsd = isUS ? mieTotalUsd : Number(watchDays) * perDiemRate;
   const perDiemThb = perDiemUsd * Number(watchFxRate);
@@ -557,65 +557,70 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
           </div>
           <p className="text-xs text-gray-500">Counting from first to last day, overnight stays only</p>
 
-          {/* M&IE Calculator */}
+          {/* M&IE Deduction Calculator */}
           {isUS && selectedRate?.mieTotal && (() => {
             const r = selectedRate;
             const full = Number(r.mieTotal);
-            const totalDays = mieRows.reduce((s, row) => s + (row.days || 0), 0);
+            const days = Number(watchDays) || 0;
+            const gross = days * full;
+            const deductRows: { key: keyof typeof mieDeductions; label: string; rate: number; hint: string }[] = [
+              { key: "firstLast",   label: "First & Last Day (−25%)", rate: full - Number(r.mieFirstLast), hint: "Departure & return days are paid at 75%" },
+              { key: "noBreakfast", label: "Breakfast provided",       rate: Number(r.mieBreakfast),        hint: `$${Number(r.mieBreakfast).toFixed(0)}/day deducted` },
+              { key: "noLunch",     label: "Lunch provided",           rate: Number(r.mieLunch),            hint: `$${Number(r.mieLunch).toFixed(0)}/day deducted` },
+              { key: "noDinner",    label: "Dinner provided",          rate: Number(r.mieDinner),           hint: `$${Number(r.mieDinner).toFixed(0)}/day deducted` },
+            ];
+            const totalDeductions = deductRows.reduce((s, row) => s + (mieDeductions[row.key] || 0) * row.rate, 0);
+
             return (
               <div className="mt-2 space-y-2">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-semibold text-gray-700">M&IE Per Diem Calculator</p>
-                  <p className="text-xs text-gray-400">
-                    Full rate ${full}/day · B ${Number(r.mieBreakfast).toFixed(0)} · L ${Number(r.mieLunch).toFixed(0)} · D ${Number(r.mieDinner).toFixed(0)} · Inc ${Number(r.mieIncidental).toFixed(0)}
-                  </p>
+                  <p className="text-xs text-gray-400">Full rate ${full}/day · B ${Number(r.mieBreakfast).toFixed(0)} · L ${Number(r.mieLunch).toFixed(0)} · D ${Number(r.mieDinner).toFixed(0)} · Inc ${Number(r.mieIncidental).toFixed(0)}</p>
                 </div>
                 <table className="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
                   <thead className="bg-gray-50 border-b">
                     <tr>
-                      <th className="text-center px-3 py-2 font-medium text-gray-700 w-20">Days</th>
-                      <th className="text-center px-3 py-2 font-medium text-gray-700 w-24">First/Last<br /><span className="text-xs font-normal text-gray-400">(75%)</span></th>
-                      <th className="text-center px-3 py-2 font-medium text-gray-700 w-24">Breakfast<br /><span className="text-xs font-normal text-gray-400">provided</span></th>
-                      <th className="text-center px-3 py-2 font-medium text-gray-700 w-24">Lunch<br /><span className="text-xs font-normal text-gray-400">provided</span></th>
-                      <th className="text-center px-3 py-2 font-medium text-gray-700 w-24">Dinner<br /><span className="text-xs font-normal text-gray-400">provided</span></th>
-                      <th className="text-right px-3 py-2 font-medium text-gray-700">Rate/Day</th>
-                      <th className="text-right px-3 py-2 font-medium text-gray-700">Subtotal</th>
+                      <th className="text-center px-4 py-2 font-medium text-gray-700 w-24">Days</th>
+                      <th className="text-left px-4 py-2 font-medium text-gray-700">Deduction</th>
+                      <th className="text-right px-4 py-2 font-medium text-gray-700">Rate/Day</th>
+                      <th className="text-right px-4 py-2 font-medium text-gray-700">Amount</th>
+                      <th className="text-left px-4 py-2 text-xs text-gray-400 font-normal">Note</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {mieRows.map((row, i) => {
-                      const base = row.firstLast ? Number(r.mieFirstLast) : full;
-                      const deduct = (row.noB ? Number(r.mieBreakfast) : 0) + (row.noL ? Number(r.mieLunch) : 0) + (row.noD ? Number(r.mieDinner) : 0);
-                      const ratePerDay = Math.max(0, base - deduct);
-                      const subtotal = (row.days || 0) * ratePerDay;
-                      const updateRow = (patch: object) => setMieRows((prev) => prev.map((x, j) => j === i ? { ...x, ...patch } : x));
+                    <tr className="bg-blue-50">
+                      <td className="px-4 py-2 text-center font-medium">{days}</td>
+                      <td className="px-4 py-2 font-medium text-blue-800">Full Day Rate</td>
+                      <td className="px-4 py-2 text-right font-mono">${full.toFixed(0)}</td>
+                      <td className="px-4 py-2 text-right font-mono font-semibold">${gross.toFixed(0)}</td>
+                      <td className="px-4 py-2 text-xs text-gray-400">Gross per diem</td>
+                    </tr>
+                    {deductRows.map(({ key, label, rate, hint }) => {
+                      const d = mieDeductions[key] || 0;
                       return (
-                        <tr key={i} className={row.days > 0 ? "bg-blue-50/40" : ""}>
-                          <td className="px-3 py-2 text-center">
-                            {isReadOnly ? <span>{row.days || "—"}</span> : (
-                              <input type="number" min={0} value={row.days || ""} placeholder="0"
-                                onChange={(e) => updateRow({ days: Math.max(0, Number(e.target.value) || 0) })}
-                                className="w-14 text-center border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400" />
+                        <tr key={key} className={d > 0 ? "bg-red-50/40" : ""}>
+                          <td className="px-4 py-2 text-center">
+                            {isReadOnly ? <span>{d || "—"}</span> : (
+                              <input
+                                type="number" min={0} max={days} value={d || ""} placeholder="0"
+                                onChange={(e) => setMieDeductions((prev) => ({ ...prev, [key]: Math.max(0, Number(e.target.value) || 0) }))}
+                                className="w-16 text-center border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-red-400"
+                              />
                             )}
                           </td>
-                          {(["firstLast", "noB", "noL", "noD"] as const).map((key) => (
-                            <td key={key} className="px-3 py-2 text-center">
-                              <input type="checkbox" checked={!!(row as any)[key]} disabled={isReadOnly}
-                                onChange={(e) => updateRow({ [key]: e.target.checked })}
-                                className="h-4 w-4 rounded border-gray-300 cursor-pointer" />
-                            </td>
-                          ))}
-                          <td className="px-3 py-2 text-right font-mono text-gray-700">${ratePerDay.toFixed(0)}</td>
-                          <td className="px-3 py-2 text-right font-mono">{subtotal > 0 ? `$${subtotal.toFixed(0)}` : "—"}</td>
+                          <td className="px-4 py-2 text-red-700">{label}</td>
+                          <td className="px-4 py-2 text-right font-mono text-red-600">−${rate.toFixed(0)}</td>
+                          <td className="px-4 py-2 text-right font-mono text-red-600">{d > 0 ? `−$${(d * rate).toFixed(0)}` : "—"}</td>
+                          <td className="px-4 py-2 text-xs text-gray-400">{hint}</td>
                         </tr>
                       );
                     })}
                   </tbody>
                   <tfoot className="border-t-2 border-gray-300 bg-gray-50">
                     <tr>
-                      <td className="px-3 py-2 text-center font-bold">{totalDays}</td>
-                      <td colSpan={5} className="px-3 py-2 font-bold">Total ({totalDays} days)</td>
-                      <td className="px-3 py-2 text-right font-bold text-blue-700">${mieTotalUsd.toFixed(0)}</td>
+                      <td colSpan={3} className="px-4 py-2 font-bold">Net Total ({days} days)</td>
+                      <td className="px-4 py-2 text-right font-bold text-blue-700">${mieTotalUsd.toFixed(0)}</td>
+                      <td className="px-4 py-2 text-xs text-gray-400">−${totalDeductions.toFixed(0)} deducted</td>
                     </tr>
                   </tfoot>
                 </table>
