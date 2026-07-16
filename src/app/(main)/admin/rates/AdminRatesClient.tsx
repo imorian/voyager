@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/use-toast";
 import { formatDate } from "@/lib/utils";
-import { Edit, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { Edit, Plus, RefreshCw, Trash2, Upload } from "lucide-react";
 
 interface Props { rates: any[] }
 
@@ -35,6 +35,8 @@ export function AdminRatesClient({ rates }: Props) {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncYear, setSyncYear] = useState(new Date().getFullYear());
+  const [importing, setImporting] = useState(false);
+  const [zipCount, setZipCount] = useState<number | null>(null);
 
   function openCreate() { setEditing(null); setForm(EMPTY); setShowDialog(true); }
   function openEdit(r: any) {
@@ -90,6 +92,25 @@ export function AdminRatesClient({ rates }: Props) {
     setDeleting(null);
     if (res.ok) { toast({ title: "Rate deleted" }); router.refresh(); }
     else toast({ variant: "destructive", title: "Failed to delete" });
+  }
+
+  async function importZip(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    toast({ title: "Importing ZIP rates…", description: "Parsing your Excel file, please wait." });
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch("/api/admin/rates/import-zip", { method: "POST", body: fd });
+    setImporting(false);
+    e.target.value = "";
+    if (res.ok) {
+      const { imported } = await res.json();
+      setZipCount(imported);
+      toast({ title: "Import complete ✓", description: `${imported} ZIP code rates imported` });
+    } else {
+      toast({ variant: "destructive", title: "Import failed" });
+    }
   }
 
   async function syncGsa() {
@@ -153,6 +174,15 @@ export function AdminRatesClient({ rates }: Props) {
               <RefreshCw className={`h-4 w-4 mr-1 ${syncing ? "animate-spin" : ""}`} />
               {syncing ? "Syncing…" : "Sync GSA Rates"}
             </Button>
+            <label>
+              <Button size="sm" variant="outline" disabled={importing} asChild>
+                <span className="cursor-pointer">
+                  <Upload className={`h-4 w-4 mr-1 ${importing ? "animate-pulse" : ""}`} />
+                  {importing ? "Importing…" : `Import ZIP Rates${zipCount !== null ? ` (${zipCount})` : ""}`}
+                </span>
+              </Button>
+              <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={importZip} />
+            </label>
             <Button size="sm" onClick={openCreate}><Plus className="h-4 w-4 mr-1" />Add City Rate</Button>
           </div>
         </div>

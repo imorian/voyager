@@ -12,7 +12,12 @@
       "Bash(xargs grep -l 'createClient\\(\\)')",
       "Bash(npm install *)",
       "Bash(npx prisma *)",
-      "Bash(cd \"c:\\\\Users\\\\silvian.cedru\\\\Documents\\\\Americas IT\\\\TravelExpenseApp\" && sed -i 's/perDiemRate.findUnique\\({ where: { area:/perDiemRate.findFirst\\({ where: { area:/g' src/app/api/forms/\\\\[id\\\\]/pre-trip/route.ts)"
+      "Bash(cd \"c:\\\\Users\\\\silvian.cedru\\\\Documents\\\\Americas IT\\\\TravelExpenseApp\" && sed -i 's/perDiemRate.findUnique\\({ where: { area:/perDiemRate.findFirst\\({ where: { area:/g' src/app/api/forms/\\\\[id\\\\]/pre-trip/route.ts)",
+      "WebFetch(domain:api.gsa.gov)",
+      "Bash(New-Item -ItemType Directory -Force -Path \"c:\\\\Users\\\\silvian.cedru\\\\Documents\\\\Americas IT\\\\TravelExpenseApp\\\\src\\\\app\\\\api\\\\admin\\\\rates\\\\sync-gsa\")",
+      "Bash(Out-Null)",
+      "Bash(Write-Host \"done\")",
+      "Bash(npm list *)"
     ],
     "additionalDirectories": [
       "c:\\Users\\silvian.cedru\\Documents\\Americas IT\\TravelExpenseApp\\src\\app\\api\\forms\\[id]\\pre-trip"

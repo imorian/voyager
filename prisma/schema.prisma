@@ -269,6 +269,36 @@ model PerDiemRate {
   @@map("per_diem_rates")
 }
 
+model ZipPerDiemRate {
+  id            String   @id @default(cuid())
+  zip           String
+  destinationId Int?     @map("destination_id")
+  name          String
+  county        String?
+  state         String
+  fiscalYear    Int      @map("fiscal_year")
+
+  lodgingOct    Decimal? @map("lodging_oct")
+  lodgingNov    Decimal? @map("lodging_nov")
+  lodgingDec    Decimal? @map("lodging_dec")
+  lodgingJan    Decimal? @map("lodging_jan")
+  lodgingFeb    Decimal? @map("lodging_feb")
+  lodgingMar    Decimal? @map("lodging_mar")
+  lodgingApr    Decimal? @map("lodging_apr")
+  lodgingMay    Decimal? @map("lodging_may")
+  lodgingJun    Decimal? @map("lodging_jun")
+  lodgingJul    Decimal? @map("lodging_jul")
+  lodgingAug    Decimal? @map("lodging_aug")
+  lodgingSep    Decimal? @map("lodging_sep")
+
+  mieTotal      Decimal  @map("mie_total")
+
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@unique([zip, fiscalYear])
+  @@map("zip_per_diem_rates")
+}
+
 model Notification {
   id              String           @id @default(cuid())
   tripFormId      String           @map("trip_form_id")

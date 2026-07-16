@@ -426,6 +426,7 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
                       if (/^\d{5}$/.test(val.trim())) {
                         setZipLooking(true);
                         try {
+                          // Check local DB first, fall back to live GSA API
                           const res = await fetch(`/api/gsa/zip/${val.trim()}`);
                           if (res.ok) setZipLookupResult(await res.json());
                           else setZipLookupResult({ error: true });
