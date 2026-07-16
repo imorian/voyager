@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { PreTripSchema, type PreTripFormData } from "@/lib/validations";
 import { COUNTRIES, TRANSPORT_TYPES } from "@/lib/constants";
@@ -28,12 +28,13 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [retracting, setRetracting] = useState(false);
   const [entity, setEntity] = useState<Entity>(form.entity ?? "TH");
-  const [selectedArea, setSelectedArea] = useState<string>(form.costOfLivingArea ?? "");
+  const [, setSelectedArea] = useState<string>(form.costOfLivingArea ?? "");
   const [perDiemRate, setPerDiemRate] = useState<number>(0);
   const [citySearch, setCitySearch] = useState<string>(form.outCity ?? "");
   const [selectedRateId, setSelectedRateId] = useState<string>(form.perDiemRateId ?? "");
   const [selectedRate, setSelectedRate] = useState<any>(null);
-  const [miedays, setMieDays] = useState({ full: 0, firstLast: 0, noBreakfast: 0, noLunch: 0, noDinner: 0 });
+  const EMPTY_MIE_ROW = () => ({ days: 0, noB: false, noL: false, noD: false, firstLast: false });
+  const [mieRows, setMieRows] = useState(() => Array.from({ length: 5 }, EMPTY_MIE_ROW));
   const [zipLookupResult, setZipLookupResult] = useState<any>(null);
   const [zipLooking, setZipLooking] = useState(false);
 
@@ -123,15 +124,15 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
   }, [entity]);
 
   const mieTotalUsd = isUS && selectedRate?.mieTotal
-    ? (() => {
-        const r = selectedRate;
-        const full = Number(r.mieTotal);
-        const firstLast = Number(r.mieFirstLast);
-        const noBreakfast = full - Number(r.mieBreakfast);
-        const noLunch = full - Number(r.mieLunch);
-        const noDinner = full - Number(r.mieDinner);
-        return miedays.full * full + miedays.firstLast * firstLast + miedays.noBreakfast * noBreakfast + miedays.noLunch * noLunch + miedays.noDinner * noDinner;
-      })()
+    ? mieRows.reduce((sum, row) => {
+        if (!row.days) return sum;
+        const full = Number(selectedRate.mieTotal);
+        const base = row.firstLast ? Number(selectedRate.mieFirstLast) : full;
+        const deduct = (row.noB ? Number(selectedRate.mieBreakfast) : 0)
+          + (row.noL ? Number(selectedRate.mieLunch) : 0)
+          + (row.noD ? Number(selectedRate.mieDinner) : 0);
+        return sum + row.days * Math.max(0, base - deduct);
+      }, 0)
     : 0;
   const perDiemUsd = isUS ? mieTotalUsd : Number(watchDays) * perDiemRate;
   const perDiemThb = perDiemUsd * Number(watchFxRate);
@@ -539,72 +540,65 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
           </div>
           <p className="text-xs text-gray-500">Counting from first to last day, overnight stays only</p>
 
-          {/* Interactive M&IE day calculator */}
+          {/* M&IE Calculator */}
           {isUS && selectedRate?.mieTotal && (() => {
             const r = selectedRate;
             const full = Number(r.mieTotal);
-            const firstLast = Number(r.mieFirstLast);
-            const noBreakfast = full - Number(r.mieBreakfast);
-            const noLunch = full - Number(r.mieLunch);
-            const noDinner = full - Number(r.mieDinner);
-            const totalDays = Object.values(miedays).reduce((a, b) => a + b, 0);
-
-            const rows: { key: keyof typeof miedays; label: string; rate: number; hint: string; bg: string }[] = [
-              { key: "full",        label: "Full Day",                rate: full,        hint: "No meals provided",              bg: "bg-blue-50" },
-              { key: "firstLast",   label: "First & Last Day (75%)", rate: firstLast,   hint: "Departure & return days",        bg: "bg-amber-50" },
-              { key: "noBreakfast", label: "Without Breakfast",      rate: noBreakfast, hint: "Breakfast provided by hotel",    bg: "" },
-              { key: "noLunch",     label: "Without Lunch",          rate: noLunch,     hint: "Lunch provided by host",         bg: "" },
-              { key: "noDinner",    label: "Without Dinner",         rate: noDinner,    hint: "Dinner provided by host",        bg: "" },
-            ];
-
+            const totalDays = mieRows.reduce((s, row) => s + (row.days || 0), 0);
             return (
               <div className="mt-2 space-y-2">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-semibold text-gray-700">M&IE Per Diem Calculator</p>
-                  <p className="text-xs text-gray-400">Breakdown: B ${Number(r.mieBreakfast).toFixed(0)} · L ${Number(r.mieLunch).toFixed(0)} · D ${Number(r.mieDinner).toFixed(0)} · Inc ${Number(r.mieIncidental).toFixed(0)}</p>
+                  <p className="text-xs text-gray-400">
+                    Full rate ${full}/day · B ${Number(r.mieBreakfast).toFixed(0)} · L ${Number(r.mieLunch).toFixed(0)} · D ${Number(r.mieDinner).toFixed(0)} · Inc ${Number(r.mieIncidental).toFixed(0)}
+                  </p>
                 </div>
                 <table className="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
                   <thead className="bg-gray-50 border-b">
                     <tr>
-                      <th className="text-center px-4 py-2 font-medium text-gray-700 w-28">Days</th>
-                      <th className="text-left px-4 py-2 font-medium text-gray-700">Rate Type</th>
-                      <th className="text-right px-4 py-2 font-medium text-gray-700">$/Day</th>
-                      <th className="text-right px-4 py-2 font-medium text-gray-700">Subtotal</th>
-                      <th className="text-left px-4 py-2 text-xs text-gray-400 font-normal">When to use</th>
+                      <th className="text-center px-3 py-2 font-medium text-gray-700 w-20">Days</th>
+                      <th className="text-center px-3 py-2 font-medium text-gray-700 w-24">First/Last<br /><span className="text-xs font-normal text-gray-400">(75%)</span></th>
+                      <th className="text-center px-3 py-2 font-medium text-gray-700 w-24">Breakfast<br /><span className="text-xs font-normal text-gray-400">provided</span></th>
+                      <th className="text-center px-3 py-2 font-medium text-gray-700 w-24">Lunch<br /><span className="text-xs font-normal text-gray-400">provided</span></th>
+                      <th className="text-center px-3 py-2 font-medium text-gray-700 w-24">Dinner<br /><span className="text-xs font-normal text-gray-400">provided</span></th>
+                      <th className="text-right px-3 py-2 font-medium text-gray-700">Rate/Day</th>
+                      <th className="text-right px-3 py-2 font-medium text-gray-700">Subtotal</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {rows.map(({ key, label, rate, hint, bg }) => (
-                      <tr key={key} className={bg}>
-                        <td className="px-4 py-2 text-center">
-                          {isReadOnly ? (
-                            <span>{miedays[key]}</span>
-                          ) : (
-                            <input
-                              type="number"
-                              min={0}
-                              value={miedays[key] || ""}
-                              placeholder="0"
-                              onChange={(e) => setMieDays((prev) => ({ ...prev, [key]: Math.max(0, Number(e.target.value) || 0) }))}
-                              className="w-16 text-center border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
-                            />
-                          )}
-                        </td>
-                        <td className="px-4 py-2 font-medium">{label}</td>
-                        <td className="px-4 py-2 text-right font-mono">${rate.toFixed(0)}</td>
-                        <td className="px-4 py-2 text-right font-mono">
-                          {miedays[key] > 0 ? `$${(miedays[key] * rate).toFixed(0)}` : "—"}
-                        </td>
-                        <td className="px-4 py-2 text-xs text-gray-400">{hint}</td>
-                      </tr>
-                    ))}
+                    {mieRows.map((row, i) => {
+                      const base = row.firstLast ? Number(r.mieFirstLast) : full;
+                      const deduct = (row.noB ? Number(r.mieBreakfast) : 0) + (row.noL ? Number(r.mieLunch) : 0) + (row.noD ? Number(r.mieDinner) : 0);
+                      const ratePerDay = Math.max(0, base - deduct);
+                      const subtotal = (row.days || 0) * ratePerDay;
+                      const updateRow = (patch: object) => setMieRows((prev) => prev.map((x, j) => j === i ? { ...x, ...patch } : x));
+                      return (
+                        <tr key={i} className={row.days > 0 ? "bg-blue-50/40" : ""}>
+                          <td className="px-3 py-2 text-center">
+                            {isReadOnly ? <span>{row.days || "—"}</span> : (
+                              <input type="number" min={0} value={row.days || ""} placeholder="0"
+                                onChange={(e) => updateRow({ days: Math.max(0, Number(e.target.value) || 0) })}
+                                className="w-14 text-center border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400" />
+                            )}
+                          </td>
+                          {(["firstLast", "noB", "noL", "noD"] as const).map((key) => (
+                            <td key={key} className="px-3 py-2 text-center">
+                              <input type="checkbox" checked={!!(row as any)[key]} disabled={isReadOnly}
+                                onChange={(e) => updateRow({ [key]: e.target.checked })}
+                                className="h-4 w-4 rounded border-gray-300 cursor-pointer" />
+                            </td>
+                          ))}
+                          <td className="px-3 py-2 text-right font-mono text-gray-700">${ratePerDay.toFixed(0)}</td>
+                          <td className="px-3 py-2 text-right font-mono">{subtotal > 0 ? `$${subtotal.toFixed(0)}` : "—"}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                   <tfoot className="border-t-2 border-gray-300 bg-gray-50">
                     <tr>
-                      <td className="px-4 py-2 text-center font-bold">{totalDays}</td>
-                      <td className="px-4 py-2 font-bold" colSpan={2}>Total ({totalDays} days)</td>
-                      <td className="px-4 py-2 text-right font-bold text-blue-700">${mieTotalUsd.toFixed(0)}</td>
-                      <td />
+                      <td className="px-3 py-2 text-center font-bold">{totalDays}</td>
+                      <td colSpan={5} className="px-3 py-2 font-bold">Total ({totalDays} days)</td>
+                      <td className="px-3 py-2 text-right font-bold text-blue-700">${mieTotalUsd.toFixed(0)}</td>
                     </tr>
                   </tfoot>
                 </table>
@@ -652,7 +646,7 @@ function F({ label, children, error, disabled }: { label: string; children: Reac
   );
 }
 
-function CountrySelect({ name, register, setValue, watch, disabled }: any) {
+function CountrySelect({ name, setValue, watch, disabled }: any) {
   const value = watch(name) ?? "";
   return (
     <Select value={value} onValueChange={(v) => setValue(name, v)} disabled={disabled}>
