@@ -109,7 +109,8 @@ export function AdminRatesClient({ rates }: Props) {
       setZipCount(imported);
       toast({ title: "Import complete ✓", description: `${imported} ZIP code rates imported` });
     } else {
-      toast({ variant: "destructive", title: "Import failed" });
+      const err = await res.json().catch(() => ({}));
+      toast({ variant: "destructive", title: "Import failed", description: err.error ?? "Unknown error" });
     }
   }
 
