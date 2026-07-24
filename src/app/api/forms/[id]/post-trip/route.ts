@@ -17,12 +17,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const form = await prisma.tripForm.findUnique({ where: { id } });
   if (!form) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (form.employeeId !== dbUser.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  if (!["PRE_APPROVED", "POST_DRAFT", "POST_REJECTED"].includes(form.status)) return NextResponse.json({ error: "Form is locked" }, { status: 400 });
+  const isDev = process.env.NEXT_PUBLIC_DEV_TOOLS === "true";
+  if (!isDev && !["PRE_APPROVED", "POST_DRAFT", "POST_REJECTED"].includes(form.status)) return NextResponse.json({ error: "Form is locked" }, { status: 400 });
 
   const body = await req.json();
-  const { action, expenseLines, ...fields } = body;
+  const { action, expenseLines, mieDays, ...fields } = body;
 
-  if (action === "SUBMIT" && process.env.NEXT_PUBLIC_DEV_TOOLS !== "true") {
+  if (action === "SUBMIT" && !isDev) {
     // Validate receipts
     const linesWithAmount = (expenseLines ?? []).filter((l: any) => Number(l.amountLocalFx ?? 0) > 0);
     for (const line of linesWithAmount) {
@@ -84,6 +85,60 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           },
         });
       }
+    }
+
+    // Save per-day M&IE rows
+    if (mieDays?.length) {
+      await tx.mieDayRow.deleteMany({ where: { tripFormId: id } });
+      for (const d of mieDays) {
+        await tx.mieDayRow.create({
+          data: {
+            tripFormId: id,
+            dayNumber: d.dayNumber,
+            date: d.date ? new Date(d.date) : null,
+            city: d.city || null,
+            gsaRate: d.gsaRate ? Number(d.gsaRate) : null,
+            firstLast: d.firstLast ?? false,
+            breakfast: d.breakfast ?? false,
+            lunch: d.lunch ?? false,
+            dinner: d.dinner ?? false,
+            gsaNet: d.gsaNet ? Number(d.gsaNet) : null,
+          },
+        });
+      }
+
+      // Save hardship invoice + day rows
+      const hardshipTotal = mieDays.reduce((sum: number, d: any) => sum + Number(d.hardshipPremium ?? 0), 0);
+      await tx.hardshipInvoice.upsert({
+        where: { tripFormId: id },
+        create: { tripFormId: id, total: hardshipTotal },
+        update: { total: hardshipTotal },
+      });
+      const hi = await tx.hardshipInvoice.findUnique({ where: { tripFormId: id } });
+      if (hi) {
+        await tx.hardshipDayRow.deleteMany({ where: { hardshipInvoiceId: hi.id } });
+        for (const d of mieDays) {
+          await tx.hardshipDayRow.create({
+            data: {
+              hardshipInvoiceId: hi.id,
+              dayNumber: d.dayNumber,
+              date: d.date ? new Date(d.date) : null,
+              city: d.city || null,
+              gsaRate: d.gsaRate ? Number(d.gsaRate) : null,
+              firstLast: d.firstLast ?? false,
+              lunch: d.lunch ?? false,
+              dinner: d.dinner ?? false,
+              hardshipGross: d.hardshipGross ? Number(d.hardshipGross) : null,
+              gsaNet: d.gsaNet ? Number(d.gsaNet) : null,
+              hardshipPremium: d.hardshipPremium ? Number(d.hardshipPremium) : null,
+            },
+          });
+        }
+      }
+
+      // Update summary totals on TripForm
+      const gsaMieTotal = mieDays.reduce((sum: number, d: any) => sum + Number(d.gsaNet ?? 0), 0);
+      await tx.tripForm.update({ where: { id }, data: { postGsaMieTotal: gsaMieTotal, postHardshipTotal: hardshipTotal } });
     }
 
     if (action === "SUBMIT") {

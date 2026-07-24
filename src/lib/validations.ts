@@ -5,12 +5,12 @@ export const ExpenseLineSchema = z.object({
   phase: z.enum(["PRE", "POST"]),
   section: z.enum(["TRANSPORTATION", "ACCOMMODATION", "OTHER"]),
   lineNumber: z.number().int().min(1).max(20),
-  expenseType: z.string().optional(),
-  expenseDate: z.string().optional(),
-  workDetails: z.string().optional(),
-  amountLocalFx: z.coerce.number().optional(),
-  fxRateBot: z.coerce.number().optional(),
-  amountThb: z.coerce.number().optional(),
+  expenseType: z.string().nullish().transform(v => v ?? ""),
+  expenseDate: z.string().nullish().transform(v => v ?? ""),
+  workDetails: z.string().nullish().transform(v => v ?? ""),
+  amountLocalFx: z.coerce.number().optional().nullable(),
+  fxRateBot: z.coerce.number().optional().nullable(),
+  amountThb: z.coerce.number().optional().nullable(),
 });
 
 export const PreTripSchema = z.object({

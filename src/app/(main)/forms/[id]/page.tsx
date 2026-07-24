@@ -18,6 +18,7 @@ export default async function FormOverviewPage({ params }: { params: Promise<{ i
       preApprover: { select: { name: true } },
       postApprover: { select: { name: true } },
       approvalLogs: { include: { actor: { select: { name: true } } }, orderBy: { actionedAt: "desc" } },
+      hardshipInvoice: { select: { id: true, total: true, paidAt: true, paidNote: true, paidByUser: { select: { name: true } } } },
     },
   });
 
@@ -138,6 +139,33 @@ export default async function FormOverviewPage({ params }: { params: Promise<{ i
           )}
         </CardContent>
       </Card>
+
+      {/* Hardship invoice status */}
+      {form.hardshipInvoice && (
+        <Card className={form.hardshipInvoice.paidAt ? "border-green-200 bg-green-50" : "border-purple-200 bg-purple-50"}>
+          <CardContent className="pt-6 flex items-center justify-between">
+            <div>
+              <p className={`font-medium ${form.hardshipInvoice.paidAt ? "text-green-800" : "text-purple-800"}`}>Hardship Allowance</p>
+              {form.hardshipInvoice.paidAt ? (
+                <p className="text-xs text-green-600 mt-0.5">
+                  Paid {formatDate(form.hardshipInvoice.paidAt)} by {form.hardshipInvoice.paidByUser?.name ?? "—"}
+                  {form.hardshipInvoice.paidNote ? ` · Ref: ${form.hardshipInvoice.paidNote}` : ""}
+                </p>
+              ) : (
+                <p className="text-xs text-purple-500 mt-0.5">Pending payment</p>
+              )}
+            </div>
+            <div className="text-right">
+              <p className={`text-2xl font-bold ${form.hardshipInvoice.paidAt ? "text-green-800" : "text-purple-800"}`}>
+                ${Number(form.hardshipInvoice.total).toFixed(2)}
+              </p>
+              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${form.hardshipInvoice.paidAt ? "bg-green-200 text-green-800" : "bg-purple-200 text-purple-800"}`}>
+                {form.hardshipInvoice.paidAt ? "Paid" : "Unpaid"}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Grand total */}
       {form.status === "POST_APPROVED" && form.postGrandTotalThb && (

@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Plane, LayoutDashboard, CheckSquare, Settings, LogOut, User } from "lucide-react";
+import { Plane, LayoutDashboard, CheckSquare, Settings, LogOut, User, BadgeDollarSign } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import type { User as PrismaUser } from "@prisma/client";
@@ -24,7 +24,10 @@ export function Navbar({ user }: NavbarProps) {
       ? [{ href: "/approvals", label: "Approvals", icon: CheckSquare }]
       : []),
     ...(user.role === "ADMIN"
-      ? [{ href: "/admin/users", label: "Admin", icon: Settings }]
+      ? [
+          { href: "/admin/users", label: "Admin", icon: Settings },
+          { href: "/admin/hardship", label: "Hardship", icon: BadgeDollarSign },
+        ]
       : []),
   ];
 

@@ -243,12 +243,43 @@ export function PostTripForm({ form, user, rates, isReadOnly }: Props) {
     if (res.ok) setReceipts((prev) => ({ ...prev, [key]: prev[key].filter((r) => r.id !== receiptId) }));
   }
 
+  function buildMieDays() {
+    return days.map((d, i) => {
+      const bd = d.mieRate ? getMieBreakdown(d.mieRate) : null;
+      let gsaNet = d.mieRate ? (d.firstLast ? d.mieRate * 0.75 : d.mieRate) : 0;
+      if (bd) {
+        if (d.breakfast) gsaNet -= bd.breakfast;
+        if (d.lunch) gsaNet -= bd.lunch;
+        if (d.dinner) gsaNet -= bd.dinner;
+      }
+      gsaNet = Math.max(0, gsaNet);
+      const applied = d.mieRate ? d.mieRate * 1.15 * 1.22 : 0;
+      let hardshipGross = d.firstLast ? applied * 0.85 : applied;
+      if (d.lunch) hardshipGross -= applied * 0.35;
+      if (d.dinner) hardshipGross -= applied * 0.35;
+      hardshipGross = Math.max(0, hardshipGross);
+      return {
+        dayNumber: i + 1,
+        date: d.date,
+        city: d.city,
+        gsaRate: d.mieRate,
+        firstLast: d.firstLast,
+        breakfast: d.breakfast,
+        lunch: d.lunch,
+        dinner: d.dinner,
+        gsaNet,
+        hardshipGross,
+        hardshipPremium: Math.max(0, hardshipGross - gsaNet),
+      };
+    });
+  }
+
   async function save(data: PostTripFormData) {
     setSaving(true);
     const res = await fetch(`/api/forms/${form.id}/post-trip`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...data, action: "SAVE" }),
+      body: JSON.stringify({ ...data, mieDays: buildMieDays(), action: "SAVE" }),
     });
     setSaving(false);
     if (res.ok) toast({ title: "Saved" });
@@ -260,7 +291,7 @@ export function PostTripForm({ form, user, rates, isReadOnly }: Props) {
     const res = await fetch(`/api/forms/${form.id}/post-trip`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...data, action: "SUBMIT" }),
+      body: JSON.stringify({ ...data, mieDays: buildMieDays(), action: "SUBMIT" }),
     });
     setSubmitting(false);
     if (res.ok) { toast({ title: "Submitted" }); router.push(`/forms/${form.id}`); }

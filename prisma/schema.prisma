@@ -84,10 +84,11 @@ model User {
   tripForms        TripForm[]     @relation("EmployeeForms")
   preApprovals     TripForm[]     @relation("PreApprover")
   postApprovals    TripForm[]     @relation("PostApprover")
-  approvalLogs     ApprovalLog[]
-  receipts         Receipt[]
-  perDiemRates     PerDiemRate[]
-  notifications    Notification[]
+  approvalLogs        ApprovalLog[]
+  receipts            Receipt[]
+  perDiemRates        PerDiemRate[]
+  notifications       Notification[]
+  hardshipsPaid       HardshipInvoice[] @relation("HardshipPaidBy")
 
   @@map("users")
 }
@@ -324,13 +325,17 @@ model MieDayRow {
 }
 
 model HardshipInvoice {
-  id         String   @id @default(cuid())
-  tripFormId String   @unique @map("trip_form_id")
+  id         String    @id @default(cuid())
+  tripFormId String    @unique @map("trip_form_id")
   total      Decimal
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  paidAt     DateTime? @map("paid_at")
+  paidBy     String?   @map("paid_by")
+  paidNote   String?   @map("paid_note")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
 
   tripForm TripForm         @relation(fields: [tripFormId], references: [id], onDelete: Cascade)
+  paidByUser User?          @relation("HardshipPaidBy", fields: [paidBy], references: [id])
   days     HardshipDayRow[]
 
   @@map("hardship_invoices")
