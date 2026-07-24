@@ -27,6 +27,10 @@ export const TRANSPORT_TYPES = [
   "Taxi", "Airfare", "Toll fee", "Express way", "Parking", "Train"
 ];
 
+export const ACCOMMODATION_TYPES = [
+  "Hotel", "Airbnb", "Serviced Apartment", "Guesthouse", "Company Housing", "Other"
+];
+
 export const STATUS_LABELS: Record<string, string> = {
   DRAFT: "Draft",
   PRE_SUBMITTED: "Pending",

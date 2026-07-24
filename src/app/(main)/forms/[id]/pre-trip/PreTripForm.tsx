@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { PreTripSchema, type PreTripFormData } from "@/lib/validations";
-import { COUNTRIES, TRANSPORT_TYPES } from "@/lib/constants";
+import { COUNTRIES, TRANSPORT_TYPES, ACCOMMODATION_TYPES } from "@/lib/constants";
 import { getMieBreakdown } from "@/lib/gsa";
 import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Save, Send, AlertCircle, FlaskConical } from "lucide-react";
+import { Save, Send, AlertCircle, FlaskConical, ChevronDown, ChevronRight, Plus } from "lucide-react";
 
 interface Props { form: any; user: any; rates: any[]; isReadOnly: boolean }
 
@@ -35,6 +35,10 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
   const [selectedRateId, setSelectedRateId] = useState<string>(form.perDiemRateId ?? "");
   const [selectedRate, setSelectedRate] = useState<any>(null);
   const [mieDeductions, setMieDeductions] = useState({ firstLast: 0, noBreakfast: 0, noLunch: 0, noDinner: 0 });
+  const [openSections, setOpenSections] = useState({ transport: true, accommodation: true, other: true });
+  const [rowCounts, setRowCounts] = useState({ transport: 5, accommodation: 5, other: 5 });
+  const toggleSection = (s: keyof typeof openSections) => setOpenSections(p => ({ ...p, [s]: !p[s] }));
+  const addRow = (s: keyof typeof rowCounts) => setRowCounts(p => ({ ...p, [s]: p[s] + 1 }));
   const [zipLookupResult, setZipLookupResult] = useState<any>(null);
   const [zipLooking, setZipLooking] = useState(false);
 
@@ -69,18 +73,9 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
     costOfLivingArea: form.costOfLivingArea ?? undefined,
     botFxRate: form.botFxRate ? Number(form.botFxRate) : undefined,
     expenseLines: [
-      ...[1, 2, 3, 4, 5].map((n) => {
-        const l = getLine("TRANSPORTATION", n);
-        return l
-          ? { ...l, amountLocalFx: l.amountLocalFx ? Number(l.amountLocalFx) : undefined, fxRateBot: l.fxRateBot ? Number(l.fxRateBot) : undefined, expenseDate: l.expenseDate ? new Date(l.expenseDate).toISOString().slice(0, 10) : "" }
-          : EMPTY_EXPENSE("PRE", "TRANSPORTATION", n);
-      }),
-      ...[1, 2, 3, 4, 5].map((n) => {
-        const l = getLine("OTHER", n);
-        return l
-          ? { ...l, amountLocalFx: l.amountLocalFx ? Number(l.amountLocalFx) : undefined, fxRateBot: l.fxRateBot ? Number(l.fxRateBot) : undefined, expenseDate: l.expenseDate ? new Date(l.expenseDate).toISOString().slice(0, 10) : "" }
-          : EMPTY_EXPENSE("PRE", "OTHER", n);
-      }),
+      ...[1,2,3,4,5].map((n) => { const l = getLine("TRANSPORTATION", n); return l ? { ...l, amountLocalFx: l.amountLocalFx ? Number(l.amountLocalFx) : undefined, fxRateBot: l.fxRateBot ? Number(l.fxRateBot) : undefined, expenseDate: l.expenseDate ? new Date(l.expenseDate).toISOString().slice(0,10) : "" } : EMPTY_EXPENSE("PRE","TRANSPORTATION",n); }),
+      ...[1,2,3,4,5].map((n) => { const l = getLine("ACCOMMODATION", n); return l ? { ...l, amountLocalFx: l.amountLocalFx ? Number(l.amountLocalFx) : undefined, fxRateBot: l.fxRateBot ? Number(l.fxRateBot) : undefined, expenseDate: l.expenseDate ? new Date(l.expenseDate).toISOString().slice(0,10) : "" } : EMPTY_EXPENSE("PRE","ACCOMMODATION",n); }),
+      ...[1,2,3,4,5].map((n) => { const l = getLine("OTHER", n); return l ? { ...l, amountLocalFx: l.amountLocalFx ? Number(l.amountLocalFx) : undefined, fxRateBot: l.fxRateBot ? Number(l.fxRateBot) : undefined, expenseDate: l.expenseDate ? new Date(l.expenseDate).toISOString().slice(0,10) : "" } : EMPTY_EXPENSE("PRE","OTHER",n); }),
     ],
   };
 
@@ -139,7 +134,8 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
   const perDiemThb = perDiemUsd * Number(watchFxRate);
 
   const transportLines = watchLines.slice(0, 5);
-  const otherLines = watchLines.slice(5, 10);
+  const accommodationLines = watchLines.slice(5, 10);
+  const otherLines = watchLines.slice(10, 15);
 
   function calcThb(line: any) {
     const amt = Number(line?.amountLocalFx ?? 0);
@@ -149,8 +145,9 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
   }
 
   const totalTransportThb = transportLines.reduce((sum, l) => sum + calcThb(l), 0);
+  const totalAccomThb = accommodationLines.reduce((sum, l) => sum + calcThb(l), 0);
   const totalOtherThb = otherLines.reduce((sum, l) => sum + calcThb(l), 0);
-  const totalThb = totalTransportThb + totalOtherThb;
+  const totalThb = totalTransportThb + totalAccomThb + totalOtherThb;
 
   async function save(data: PreTripFormData) {
     setSaving(true);
@@ -369,12 +366,32 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
       {/* Section 4 — Expenses */}
       <Card>
         <CardHeader><CardTitle>Section 4 — Estimated Expenses</CardTitle></CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-4">
           <ExpenseTable
             title="Transportation"
             lines={transportLines}
             offset={0}
-            isTransport
+            tableType="transport"
+            open={openSections.transport}
+            onToggle={() => toggleSection("transport")}
+            rowCount={rowCounts.transport}
+            onAddRow={() => addRow("transport")}
+            register={register}
+            watch={watch}
+            setValue={setValue}
+            isReadOnly={isReadOnly}
+            calcThb={calcThb}
+            isUS={isUS}
+          />
+          <ExpenseTable
+            title="Accommodation"
+            lines={accommodationLines}
+            offset={5}
+            tableType="accommodation"
+            open={openSections.accommodation}
+            onToggle={() => toggleSection("accommodation")}
+            rowCount={rowCounts.accommodation}
+            onAddRow={() => addRow("accommodation")}
             register={register}
             watch={watch}
             setValue={setValue}
@@ -385,8 +402,12 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
           <ExpenseTable
             title="Other Expenses"
             lines={otherLines}
-            offset={5}
-            isTransport={false}
+            offset={10}
+            tableType="other"
+            open={openSections.other}
+            onToggle={() => toggleSection("other")}
+            rowCount={rowCounts.other}
+            onAddRow={() => addRow("other")}
             register={register}
             watch={watch}
             setValue={setValue}
@@ -682,14 +703,28 @@ function CountrySelect({ name, setValue, watch, disabled }: any) {
   );
 }
 
-function ExpenseTable({ title, lines, offset, isTransport, register, watch, setValue, isReadOnly, calcThb, isUS }: any) {
-  const totalThb = lines.reduce((s: number, l: any) => s + calcThb(l), 0);
+function ExpenseTable({ title, lines, offset, tableType, open, onToggle, rowCount, onAddRow, register, watch, setValue, isReadOnly, calcThb, isUS }: any) {
+  const rows = Array.from({ length: rowCount }, (_, i) => i);
+  const totalThb = rows.reduce((s: number, i: number) => s + calcThb(watch(`expenseLines.${offset + i}`) ?? lines[i] ?? {}), 0);
   const colSpanTotal = isUS ? 4 : 6;
+  const typeOptions = tableType === "transport" ? TRANSPORT_TYPES : tableType === "accommodation" ? ACCOMMODATION_TYPES : null;
+
   return (
-    <div>
-      <h3 className="font-medium text-sm mb-2">{title}</h3>
+    <div className="border border-gray-200 rounded-lg overflow-hidden">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full flex items-center justify-between px-4 py-2.5 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+      >
+        <span className="font-medium text-sm">{title}</span>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-gray-500">Total: {totalThb.toFixed(2)} {isUS ? "USD" : "THB"}</span>
+          {open ? <ChevronDown className="h-4 w-4 text-gray-500" /> : <ChevronRight className="h-4 w-4 text-gray-500" />}
+        </div>
+      </button>
+      {open && (
       <div className="overflow-x-auto">
-        <table className="w-full text-xs border-collapse border border-gray-300">
+        <table className="w-full text-xs border-collapse border-t border-gray-200">
           <thead>
             <tr className="bg-gray-50">
               <th className="border border-gray-300 px-2 py-1.5 text-left w-8">#</th>
@@ -702,7 +737,7 @@ function ExpenseTable({ title, lines, offset, isTransport, register, watch, setV
             </tr>
           </thead>
           <tbody>
-            {[0, 1, 2, 3, 4].map((i) => {
+            {rows.map((i) => {
               const idx = offset + i;
               const line = lines[i] ?? {};
               const thb = calcThb(watch(`expenseLines.${idx}`) ?? line);
@@ -710,7 +745,7 @@ function ExpenseTable({ title, lines, offset, isTransport, register, watch, setV
                 <tr key={i}>
                   <td className="border border-gray-300 px-2 py-1 text-gray-500">{i + 1}</td>
                   <td className="border border-gray-300 px-1 py-1">
-                    {isTransport ? (
+                    {typeOptions ? (
                       <Select
                         value={watch(`expenseLines.${idx}.expenseType`) ?? ""}
                         onValueChange={(v) => setValue(`expenseLines.${idx}.expenseType`, v)}
@@ -718,7 +753,7 @@ function ExpenseTable({ title, lines, offset, isTransport, register, watch, setV
                       >
                         <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Type" /></SelectTrigger>
                         <SelectContent>
-                          {TRANSPORT_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                          {typeOptions.map((t: string) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     ) : (
@@ -754,6 +789,14 @@ function ExpenseTable({ title, lines, offset, isTransport, register, watch, setV
           </tfoot>
         </table>
       </div>
+      )}
+      {!isReadOnly && open && (
+        <div className="px-4 py-2 border-t border-gray-200 bg-white">
+          <button type="button" onClick={onAddRow} className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800">
+            <Plus className="h-3 w-3" />Add row
+          </button>
+        </div>
+      )}
     </div>
   );
 }
