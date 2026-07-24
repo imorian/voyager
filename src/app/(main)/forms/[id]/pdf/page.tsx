@@ -12,5 +12,8 @@ export default async function PdfPage({ params }: { params: Promise<{ id: string
   if (user.role === "EMPLOYEE" && form.employeeId !== user.id) notFound();
   if (form.status !== "POST_APPROVED") notFound();
 
-  return <PdfPageClient form={form as any} />;
+  const serialize = (v: any) => JSON.parse(JSON.stringify(v, (_, val) =>
+    val !== null && typeof val === "object" && typeof val.toFixed === "function" ? Number(val) : val
+  ));
+  return <PdfPageClient form={serialize(form)} />;
 }

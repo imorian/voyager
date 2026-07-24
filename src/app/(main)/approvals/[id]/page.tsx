@@ -25,5 +25,8 @@ export default async function ApprovalReviewPage({ params }: { params: Promise<{
     form.employee.managerId !== user.id
   ) notFound();
 
-  return <ApprovalReviewClient form={form as any} user={user as any} />;
+  const serialize = (v: any) => JSON.parse(JSON.stringify(v, (_, val) =>
+    val !== null && typeof val === "object" && typeof val.toFixed === "function" ? Number(val) : val
+  ));
+  return <ApprovalReviewClient form={serialize(form)} user={user as any} />;
 }

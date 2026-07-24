@@ -33,9 +33,13 @@ export default async function DashboardPage() {
     (f) => f.status === "POST_APPROVED" && f.postApprovedAt && new Date(f.postApprovedAt).getFullYear() === currentYear
   ).length;
 
+  const serialize = (v: any) => JSON.parse(JSON.stringify(v, (_, val) =>
+    val !== null && typeof val === "object" && typeof val.toFixed === "function" ? Number(val) : val
+  ));
+
   return (
     <DashboardClient
-      forms={forms as any}
+      forms={serialize(forms)}
       user={user as any}
       stats={{ openDrafts, awaitingApproval, approvedThisYear }}
     />

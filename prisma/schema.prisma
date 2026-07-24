@@ -158,6 +158,8 @@ model TripForm {
   postTotalExpensesThb Decimal? @map("post_total_expenses_thb")
   postTotalPerdiemThb  Decimal? @map("post_total_perdiem_thb")
   postGrandTotalThb    Decimal? @map("post_grand_total_thb")
+  postGsaMieTotal      Decimal? @map("post_gsa_mie_total")
+  postHardshipTotal    Decimal? @map("post_hardship_total")
 
   pdfStoragePath String?  @map("pdf_storage_path")
 
@@ -171,6 +173,8 @@ model TripForm {
   receipts      Receipt[]
   approvalLogs  ApprovalLog[]
   notifications Notification[]
+  mieDayRows    MieDayRow[]
+  hardshipInvoice HardshipInvoice?
 
   @@map("trip_forms")
 }
@@ -298,6 +302,58 @@ model ZipPerDiemRate {
 
   @@unique([zip, fiscalYear])
   @@map("zip_per_diem_rates")
+}
+
+model MieDayRow {
+  id         String   @id @default(cuid())
+  tripFormId String   @map("trip_form_id")
+  dayNumber  Int      @map("day_number")
+  date       DateTime?
+  city       String?
+  gsaRate    Decimal? @map("gsa_rate")
+  firstLast  Boolean  @default(false) @map("first_last")
+  breakfast  Boolean  @default(false)
+  lunch      Boolean  @default(false)
+  dinner     Boolean  @default(false)
+  gsaNet     Decimal? @map("gsa_net")
+
+  tripForm TripForm @relation(fields: [tripFormId], references: [id], onDelete: Cascade)
+
+  @@unique([tripFormId, dayNumber])
+  @@map("mie_day_rows")
+}
+
+model HardshipInvoice {
+  id         String   @id @default(cuid())
+  tripFormId String   @unique @map("trip_form_id")
+  total      Decimal
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  tripForm TripForm         @relation(fields: [tripFormId], references: [id], onDelete: Cascade)
+  days     HardshipDayRow[]
+
+  @@map("hardship_invoices")
+}
+
+model HardshipDayRow {
+  id                String  @id @default(cuid())
+  hardshipInvoiceId String  @map("hardship_invoice_id")
+  dayNumber         Int     @map("day_number")
+  date              DateTime?
+  city              String?
+  gsaRate           Decimal? @map("gsa_rate")
+  firstLast         Boolean  @default(false) @map("first_last")
+  lunch             Boolean  @default(false)
+  dinner            Boolean  @default(false)
+  hardshipGross     Decimal? @map("hardship_gross")
+  gsaNet            Decimal? @map("gsa_net")
+  hardshipPremium   Decimal? @map("hardship_premium")
+
+  hardshipInvoice HardshipInvoice @relation(fields: [hardshipInvoiceId], references: [id], onDelete: Cascade)
+
+  @@unique([hardshipInvoiceId, dayNumber])
+  @@map("hardship_day_rows")
 }
 
 model Notification {

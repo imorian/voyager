@@ -8,5 +8,8 @@ export default async function AdminRatesPage() {
     orderBy: [{ country: "asc" }, { state: "asc" }, { city: "asc" }],
     include: { updater: { select: { name: true } } },
   });
-  return <AdminRatesClient rates={rates as any} />;
+  const serialize = (v: any) => JSON.parse(JSON.stringify(v, (_, val) =>
+    val !== null && typeof val === "object" && typeof val.toFixed === "function" ? Number(val) : val
+  ));
+  return <AdminRatesClient rates={serialize(rates)} />;
 }

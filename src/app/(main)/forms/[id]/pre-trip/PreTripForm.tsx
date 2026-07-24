@@ -28,7 +28,7 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [retracting, setRetracting] = useState(false);
-  const [entity, setEntity] = useState<Entity>(form.entity ?? "TH");
+  const [entity, setEntity] = useState<Entity>("US");
   const [, setSelectedArea] = useState<string>(form.costOfLivingArea ?? "");
   const [perDiemRate, setPerDiemRate] = useState<number>(0);
   const [citySearch, setCitySearch] = useState<string>(form.outCity ?? "");
@@ -36,9 +36,13 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
   const [selectedRate, setSelectedRate] = useState<any>(null);
   const [mieDeductions, setMieDeductions] = useState({ firstLast: 0, noBreakfast: 0, noLunch: 0, noDinner: 0 });
   const [openSections, setOpenSections] = useState({ transport: true, accommodation: true, other: true });
-  const [rowCounts, setRowCounts] = useState({ transport: 5, accommodation: 5, other: 5 });
+  const savedTransport = form.expenseLines?.filter((l: any) => l.phase === "PRE" && l.section === "TRANSPORTATION" && (l.expenseType || l.amountLocalFx)).length ?? 0;
+  const savedAccom = form.expenseLines?.filter((l: any) => l.phase === "PRE" && l.section === "ACCOMMODATION" && (l.expenseType || l.amountLocalFx)).length ?? 0;
+  const savedOther = form.expenseLines?.filter((l: any) => l.phase === "PRE" && l.section === "OTHER" && (l.expenseType || l.amountLocalFx)).length ?? 0;
+  const [rowCounts, setRowCounts] = useState({ transport: Math.max(1, savedTransport), accommodation: Math.max(1, savedAccom), other: Math.max(1, savedOther) });
   const toggleSection = (s: keyof typeof openSections) => setOpenSections(p => ({ ...p, [s]: !p[s] }));
   const addRow = (s: keyof typeof rowCounts) => setRowCounts(p => ({ ...p, [s]: p[s] + 1 }));
+  const [accomBreakfast, setAccomBreakfast] = useState<boolean[]>(Array(20).fill(false));
   const [zipLookupResult, setZipLookupResult] = useState<any>(null);
   const [zipLooking, setZipLooking] = useState(false);
 
@@ -88,6 +92,42 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
   const watchDays = watch("totalTripDays") ?? 0;
   const watchFxRate = watch("botFxRate") ?? 0;
   const watchArea = watch("costOfLivingArea");
+  const watchOutDepDate = watch("outDepDate");
+  const watchInArrDate = watch("inArrDate");
+
+  // Auto-calculate total trip days from departure → return arrival
+  useEffect(() => {
+    if (watchOutDepDate && watchInArrDate) {
+      const dep = new Date(watchOutDepDate);
+      const arr = new Date(watchInArrDate);
+      const diff = Math.round((arr.getTime() - dep.getTime()) / (1000 * 60 * 60 * 24));
+      if (diff > 0) setValue("totalTripDays", diff + 1);
+    }
+  }, [watchOutDepDate, watchInArrDate]);
+
+  // Auto-set First & Last Day deduction — always 2 days (or 1 for single-day trips)
+  useEffect(() => {
+    const days = Number(watchDays) || 0;
+    if (days > 0) {
+      setMieDeductions(p => ({ ...p, firstLast: Math.min(2, days) }));
+    }
+  }, [watchDays]);
+
+  // Auto-update breakfast deduction from accommodation rows with breakfast included
+  useEffect(() => {
+    let breakfastNights = 0;
+    for (let i = 0; i < rowCounts.accommodation; i++) {
+      if (!accomBreakfast[i]) continue;
+      const checkIn = watchLines[5 + i]?.expenseDate;
+      const checkOut = watchLines[5 + i]?.workDetails; // workDetails stores check-out date for accommodation
+      if (checkIn && checkOut && checkOut.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const nights = Math.round((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24));
+        if (nights > 0) breakfastNights += nights;
+      }
+    }
+    const days = Number(watchDays) || 0;
+    setMieDeductions(p => ({ ...p, noBreakfast: Math.min(breakfastNights, days) }));
+  }, [accomBreakfast, watchLines, rowCounts.accommodation, watchDays]);
 
   // City rates (for US) and area rates (international)
   const cityRates = rates.filter((r: any) => r.city);
@@ -400,6 +440,8 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
             isReadOnly={isReadOnly}
             calcThb={calcThb}
             isUS={isUS}
+            accomBreakfast={accomBreakfast}
+            onBreakfastToggle={(i: number) => setAccomBreakfast(p => { const n = [...p]; n[i] = !n[i]; return n; })}
           />
           <ExpenseTable
             title="Other Expenses"
@@ -584,11 +626,9 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
             const full = Number(r.mieTotal);
             const days = Number(watchDays) || 0;
             const gross = days * full;
+            // Only First & Last Day is known at pre-trip stage; meals are handled in post-trip
             const deductRows: { key: keyof typeof mieDeductions; label: string; rate: number; hint: string }[] = [
-              { key: "firstLast",   label: "First & Last Day (−25%)", rate: full - Number(r.mieFirstLast), hint: "Departure & return days are paid at 75%" },
-              { key: "noBreakfast", label: "Breakfast provided",       rate: Number(r.mieBreakfast),        hint: `$${Number(r.mieBreakfast).toFixed(0)}/day deducted` },
-              { key: "noLunch",     label: "Lunch provided",           rate: Number(r.mieLunch),            hint: `$${Number(r.mieLunch).toFixed(0)}/day deducted` },
-              { key: "noDinner",    label: "Dinner provided",          rate: Number(r.mieDinner),           hint: `$${Number(r.mieDinner).toFixed(0)}/day deducted` },
+              { key: "firstLast", label: "First & Last Day (−25%)", rate: full - Number(r.mieFirstLast), hint: "Departure & return days are paid at 75%" },
             ];
             const totalDeductions = deductRows.reduce((s, row) => s + (mieDeductions[row.key] || 0) * row.rate, 0);
 
@@ -621,18 +661,7 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
                       const over = days > 0 && d > days;
                       return (
                         <tr key={key} className={over ? "bg-orange-50" : d > 0 ? "bg-red-50/40" : ""}>
-                          <td className="px-4 py-2 text-center">
-                            {isReadOnly ? <span>{d || "—"}</span> : (
-                              <div>
-                                <input
-                                  type="number" min={0} value={d || ""} placeholder="0"
-                                  onChange={(e) => setMieDeductions((prev) => ({ ...prev, [key]: Math.min(days, Math.max(0, Number(e.target.value) || 0)) }))}
-                                  className={`w-16 text-center border rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 ${over ? "border-orange-400 focus:ring-orange-400" : "border-gray-300 focus:ring-red-400"}`}
-                                />
-                                {over && <p className="text-xs text-orange-600 mt-0.5 w-20">max {days}</p>}
-                              </div>
-                            )}
-                          </td>
+                          <td className="px-4 py-2 text-center text-gray-700 font-medium">{d}</td>
                           <td className="px-4 py-2 text-red-700">{label}</td>
                           <td className="px-4 py-2 text-right font-mono text-red-600">−${rate.toFixed(0)}</td>
                           <td className="px-4 py-2 text-right font-mono text-red-600">{d > 0 ? `−$${(d * rate).toFixed(0)}` : "—"}</td>
@@ -705,11 +734,12 @@ function CountrySelect({ name, setValue, watch, disabled }: any) {
   );
 }
 
-function ExpenseTable({ title, lines, offset, tableType, open, onToggle, rowCount, onAddRow, register, watch, setValue, isReadOnly, calcThb, isUS }: any) {
+function ExpenseTable({ title, lines, offset, tableType, open, onToggle, rowCount, onAddRow, register, watch, setValue, isReadOnly, calcThb, isUS, accomBreakfast, onBreakfastToggle }: any) {
   const rows = Array.from({ length: rowCount }, (_, i) => i);
   const totalThb = rows.reduce((s: number, i: number) => s + calcThb(watch(`expenseLines.${offset + i}`) ?? lines[i] ?? {}), 0);
-  const colSpanTotal = isUS ? 4 : 6;
-  const typeOptions = tableType === "transport" ? TRANSPORT_TYPES : tableType === "accommodation" ? ACCOMMODATION_TYPES : null;
+  const isAccom = tableType === "accommodation";
+  const colSpanTotal = isUS ? (isAccom ? 5 : 4) : 6;
+  const typeOptions = tableType === "transport" ? TRANSPORT_TYPES : isAccom ? ACCOMMODATION_TYPES : null;
 
   return (
     <div className="border border-gray-200 rounded-lg overflow-hidden">
@@ -731,8 +761,18 @@ function ExpenseTable({ title, lines, offset, tableType, open, onToggle, rowCoun
             <tr className="bg-gray-50">
               <th className="border border-gray-300 px-2 py-1.5 text-left w-8">#</th>
               <th className="border border-gray-300 px-2 py-1.5 text-left w-36">Type</th>
-              <th className="border border-gray-300 px-2 py-1.5 text-left w-28">Date</th>
-              <th className="border border-gray-300 px-2 py-1.5 text-left">Work Details</th>
+              {isAccom ? (
+                <>
+                  <th className="border border-gray-300 px-2 py-1.5 text-left w-28">Check-in</th>
+                  <th className="border border-gray-300 px-2 py-1.5 text-left w-28">Check-out</th>
+                  <th className="border border-gray-300 px-2 py-1.5 text-center w-20">Breakfast</th>
+                </>
+              ) : (
+                <>
+                  <th className="border border-gray-300 px-2 py-1.5 text-left w-28">Date</th>
+                  <th className="border border-gray-300 px-2 py-1.5 text-left">Work Details</th>
+                </>
+              )}
               <th className="border border-gray-300 px-2 py-1.5 text-right w-28">Amount ({isUS ? "USD" : "Local Fx"})</th>
               {!isUS && <th className="border border-gray-300 px-2 py-1.5 text-right w-24">FX Rate (BOT)</th>}
               {!isUS && <th className="border border-gray-300 px-2 py-1.5 text-right w-28">Amount (THB)</th>}
@@ -743,8 +783,14 @@ function ExpenseTable({ title, lines, offset, tableType, open, onToggle, rowCoun
               const idx = offset + i;
               const line = lines[i] ?? {};
               const thb = calcThb(watch(`expenseLines.${idx}`) ?? line);
+              const checkIn = watch(`expenseLines.${idx}.expenseDate`) ?? "";
+              const checkOut = watch(`expenseLines.${idx}.workDetails`) ?? "";
+              const nights = isAccom && checkIn && checkOut && checkOut.match(/^\d{4}-\d{2}-\d{2}$/)
+                ? Math.max(0, Math.round((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24)))
+                : null;
+              const hasBF = accomBreakfast?.[i] ?? false;
               return (
-                <tr key={i}>
+                <tr key={i} className={hasBF ? "bg-amber-50/40" : ""}>
                   <td className="border border-gray-300 px-2 py-1 text-gray-500">{i + 1}</td>
                   <td className="border border-gray-300 px-1 py-1">
                     {typeOptions ? (
@@ -762,12 +808,44 @@ function ExpenseTable({ title, lines, offset, tableType, open, onToggle, rowCoun
                       <Input className="h-7 text-xs" {...register(`expenseLines.${idx}.expenseType`)} disabled={isReadOnly} placeholder="Description" />
                     )}
                   </td>
-                  <td className="border border-gray-300 px-1 py-1">
-                    <Input type="date" className="h-7 text-xs" {...register(`expenseLines.${idx}.expenseDate`)} disabled={isReadOnly} />
-                  </td>
-                  <td className="border border-gray-300 px-1 py-1">
-                    <Input className="h-7 text-xs" {...register(`expenseLines.${idx}.workDetails`)} disabled={isReadOnly} />
-                  </td>
+                  {isAccom ? (
+                    <>
+                      <td className="border border-gray-300 px-1 py-1">
+                        <Input type="date" className="h-7 text-xs" {...register(`expenseLines.${idx}.expenseDate`)} disabled={isReadOnly} />
+                      </td>
+                      <td className="border border-gray-300 px-1 py-1">
+                        <div className="space-y-0.5">
+                          <Input type="date" className="h-7 text-xs" {...register(`expenseLines.${idx}.workDetails`)} disabled={isReadOnly} />
+                          {nights !== null && nights > 0 && (
+                            <p className="text-center text-xs text-blue-600 font-medium">{nights} night{nights !== 1 ? "s" : ""}</p>
+                          )}
+                        </div>
+                      </td>
+                      <td className="border border-gray-300 px-1 py-1 text-center">
+                        <div className="flex flex-col items-center gap-0.5">
+                          <input
+                            type="checkbox"
+                            checked={hasBF}
+                            onChange={() => onBreakfastToggle?.(i)}
+                            disabled={isReadOnly}
+                            className="h-4 w-4 accent-amber-500"
+                          />
+                          {hasBF && nights && nights > 0 && (
+                            <span className="text-amber-600 text-xs">{nights}×BF</span>
+                          )}
+                        </div>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="border border-gray-300 px-1 py-1">
+                        <Input type="date" className="h-7 text-xs" {...register(`expenseLines.${idx}.expenseDate`)} disabled={isReadOnly} />
+                      </td>
+                      <td className="border border-gray-300 px-1 py-1">
+                        <Input className="h-7 text-xs" {...register(`expenseLines.${idx}.workDetails`)} disabled={isReadOnly} />
+                      </td>
+                    </>
+                  )}
                   <td className="border border-gray-300 px-1 py-1">
                     <Input type="number" step="0.01" className="h-7 text-xs text-right" {...register(`expenseLines.${idx}.amountLocalFx`)} disabled={isReadOnly} />
                   </td>

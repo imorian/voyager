@@ -3,8 +3,8 @@ import { z } from "zod";
 export const ExpenseLineSchema = z.object({
   id: z.string().optional(),
   phase: z.enum(["PRE", "POST"]),
-  section: z.enum(["TRANSPORTATION", "OTHER"]),
-  lineNumber: z.number().int().min(1).max(5),
+  section: z.enum(["TRANSPORTATION", "ACCOMMODATION", "OTHER"]),
+  lineNumber: z.number().int().min(1).max(20),
   expenseType: z.string().optional(),
   expenseDate: z.string().optional(),
   workDetails: z.string().optional(),
@@ -31,13 +31,13 @@ export const PreTripSchema = z.object({
   outArrTime: z.string().optional(),
 
   // Incoming flight
-  inCity: z.string().min(1, "Return city is required"),
-  inCountry: z.string().min(1, "Return country is required"),
+  inCity: z.string().optional(),
+  inCountry: z.string().optional(),
   inAirline: z.string().optional(),
   inFlightNo: z.string().optional(),
-  inDepDate: z.string().min(1, "Return departure date is required"),
+  inDepDate: z.string().optional(),
   inDepTime: z.string().optional(),
-  inArrDate: z.string().min(1, "Return arrival date is required"),
+  inArrDate: z.string().optional(),
   inArrTime: z.string().optional(),
 
   // Per diem

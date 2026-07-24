@@ -29,5 +29,13 @@ export default async function PostTripPage({ params }: { params: Promise<{ id: s
   const isReadOnly = !isDev && !["PRE_APPROVED", "POST_DRAFT", "POST_REJECTED"].includes(form.status);
   const rates = await prisma.perDiemRate.findMany();
 
-  return <PostTripForm form={form as any} user={user as any} rates={rates as any} isReadOnly={isReadOnly} />;
+  // Serialize Prisma Decimal/Date fields to plain values for client component
+  const serializedForm = JSON.parse(JSON.stringify(form, (_, v) =>
+    v !== null && typeof v === "object" && typeof v.toFixed === "function" ? Number(v) : v
+  ));
+  const serializedRates = JSON.parse(JSON.stringify(rates, (_, v) =>
+    v !== null && typeof v === "object" && typeof v.toFixed === "function" ? Number(v) : v
+  ));
+
+  return <PostTripForm form={serializedForm} user={user as any} rates={serializedRates} isReadOnly={isReadOnly} />;
 }
