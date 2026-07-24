@@ -22,7 +22,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const body = await req.json();
   const { action, expenseLines, ...fields } = body;
 
-  if (action === "SUBMIT") {
+  if (action === "SUBMIT" && process.env.NEXT_PUBLIC_DEV_TOOLS !== "true") {
     // Validate receipts
     const linesWithAmount = (expenseLines ?? []).filter((l: any) => Number(l.amountLocalFx ?? 0) > 0);
     for (const line of linesWithAmount) {

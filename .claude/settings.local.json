@@ -17,7 +17,11 @@
       "Bash(New-Item -ItemType Directory -Force -Path \"c:\\\\Users\\\\silvian.cedru\\\\Documents\\\\Americas IT\\\\TravelExpenseApp\\\\src\\\\app\\\\api\\\\admin\\\\rates\\\\sync-gsa\")",
       "Bash(Out-Null)",
       "Bash(Write-Host \"done\")",
-      "Bash(npm list *)"
+      "Bash(npm list *)",
+      "Bash(npm run *)",
+      "PowerShell(head -50)",
+      "PowerShell(Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue)",
+      "PowerShell(taskkill /PID 31712 /F 2>$null; Start-Sleep -Seconds 1; Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { taskkill /PID $_.OwningProcess /F })"
     ],
     "additionalDirectories": [
       "c:\\Users\\silvian.cedru\\Documents\\Americas IT\\TravelExpenseApp\\src\\app\\api\\forms\\[id]\\pre-trip"

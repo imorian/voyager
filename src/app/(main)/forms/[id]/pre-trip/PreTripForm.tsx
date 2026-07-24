@@ -223,11 +223,12 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
   }
 
   function fillDummy() {
-    setEntity("TH");
+    setEntity("US");
     setValue("purpose", "Business Development");
-    setValue("objective", "Attend annual supplier conference, negotiate Q3 contracts, and conduct site visits with key partners.");
+    setValue("objective", "Attend annual supplier conference, negotiate Q3 contracts, and conduct site visits with key partners in New York.");
     setValue("costChargedTo", "BGP-Operations");
     setValue("costCenter", "CC-1001");
+    // Outgoing flight: Bangkok → New York
     setValue("outCity", "New York");
     setValue("outCountry", "United States");
     setValue("outAirline", "Thai Airways");
@@ -236,6 +237,7 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
     setValue("outDepTime", "23:00");
     setValue("outArrDate", "2026-08-02");
     setValue("outArrTime", "06:30");
+    // Return flight: New York → Bangkok
     setValue("inCity", "Bangkok");
     setValue("inCountry", "Thailand");
     setValue("inAirline", "Thai Airways");
@@ -244,32 +246,40 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
     setValue("inDepTime", "11:00");
     setValue("inArrDate", "2026-08-08");
     setValue("inArrTime", "23:45");
-    setValue("totalTripDays", 7);
-    setValue("costOfLivingArea", "HIGHEST");
-    setSelectedArea("HIGHEST");
-    setValue("botFxRate", 35.50);
-    // Transportation lines
+    // Days auto-calculated from dates above (8 days), but set explicitly
+    setValue("totalTripDays", 8);
+    // Transportation (indices 0–4)
     setValue("expenseLines.0.expenseType", "Flight");
     setValue("expenseLines.0.expenseDate", "2026-08-01");
-    setValue("expenseLines.0.workDetails", "BKK → JFK return ticket");
+    setValue("expenseLines.0.workDetails", "BKK → JFK return ticket (Thai Airways TG911/TG912)");
     setValue("expenseLines.0.amountLocalFx", 1800);
-    setValue("expenseLines.0.fxRateBot", 35.50);
     setValue("expenseLines.1.expenseType", "Taxi");
     setValue("expenseLines.1.expenseDate", "2026-08-02");
     setValue("expenseLines.1.workDetails", "JFK airport to hotel");
-    setValue("expenseLines.1.amountLocalFx", 80);
-    setValue("expenseLines.1.fxRateBot", 35.50);
-    // Other expense lines
+    setValue("expenseLines.1.amountLocalFx", 85);
+    setValue("expenseLines.2.expenseType", "Taxi");
+    setValue("expenseLines.2.expenseDate", "2026-08-07");
+    setValue("expenseLines.2.workDetails", "Hotel to JFK airport");
+    setValue("expenseLines.2.amountLocalFx", 85);
+    // Accommodation (indices 5–9): check-in date in expenseDate, check-out in workDetails
     setValue("expenseLines.5.expenseType", "Hotel");
-    setValue("expenseLines.5.expenseDate", "2026-08-02");
-    setValue("expenseLines.5.workDetails", "5 nights accommodation NYC");
-    setValue("expenseLines.5.amountLocalFx", 1200);
-    setValue("expenseLines.5.fxRateBot", 35.50);
-    setValue("expenseLines.6.expenseType", "Conference fee");
-    setValue("expenseLines.6.expenseDate", "2026-08-03");
-    setValue("expenseLines.6.workDetails", "Annual supplier summit registration");
-    setValue("expenseLines.6.amountLocalFx", 350);
-    setValue("expenseLines.6.fxRateBot", 35.50);
+    setValue("expenseLines.5.expenseDate", "2026-08-02");   // check-in
+    setValue("expenseLines.5.workDetails", "2026-08-07");   // check-out
+    setValue("expenseLines.5.amountLocalFx", 1750);
+    setAccomBreakfast(prev => { const a = [...prev]; a[0] = false; return a; });
+    setRowCounts(p => ({ ...p, accommodation: 1, transport: 3 }));
+    // Other expenses (indices 10–14)
+    setValue("expenseLines.10.expenseType", "Conference fee");
+    setValue("expenseLines.10.expenseDate", "2026-08-03");
+    setValue("expenseLines.10.workDetails", "Annual supplier summit registration");
+    setValue("expenseLines.10.amountLocalFx", 350);
+    setValue("expenseLines.11.expenseType", "Business meal");
+    setValue("expenseLines.11.expenseDate", "2026-08-04");
+    setValue("expenseLines.11.workDetails", "Working dinner with supplier team");
+    setValue("expenseLines.11.amountLocalFx", 120);
+    setRowCounts(p => ({ ...p, other: 2 }));
+    setCitySearch("New York");
+    toast({ title: "Test data filled", description: "NYC trip · 8 days · Aug 1–8 2026" });
   }
 
   async function retract() {

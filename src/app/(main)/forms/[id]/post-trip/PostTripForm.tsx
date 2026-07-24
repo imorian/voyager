@@ -513,7 +513,9 @@ export function PostTripForm({ form, user, rates, isReadOnly }: Props) {
           <Button type="button" variant="outline" onClick={handleSubmit(save)} disabled={saving}>
             <Save className="h-4 w-4 mr-2" />{saving ? "Saving..." : "Save Draft"}
           </Button>
-          <Button type="button" onClick={handleSubmit(submit)} disabled={submitting}>
+          <Button type="button" onClick={handleSubmit(submit, (errors) => {
+            toast({ variant: "destructive", title: "Validation error", description: JSON.stringify(errors) });
+          })} disabled={submitting}>
             <Send className="h-4 w-4 mr-2" />{submitting ? "Submitting..." : "Submit for Approval"}
           </Button>
         </div>
