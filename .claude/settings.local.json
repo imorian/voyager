@@ -21,7 +21,9 @@
       "Bash(npm run *)",
       "PowerShell(head -50)",
       "PowerShell(Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue)",
-      "PowerShell(taskkill /PID 31712 /F 2>$null; Start-Sleep -Seconds 1; Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { taskkill /PID $_.OwningProcess /F })"
+      "PowerShell(taskkill /PID 31712 /F 2>$null; Start-Sleep -Seconds 1; Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { taskkill /PID $_.OwningProcess /F })",
+      "Bash(mkdir -p \"c:/Users/silvian.cedru/Documents/Americas IT/TravelExpenseApp/src/app/api/forms/[id]/pdf\")",
+      "Bash(cat)"
     ],
     "additionalDirectories": [
       "c:\\Users\\silvian.cedru\\Documents\\Americas IT\\TravelExpenseApp\\src\\app\\api\\forms\\[id]\\pre-trip"
