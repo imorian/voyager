@@ -26,8 +26,9 @@ export default async function FormOverviewPage({ params }: { params: Promise<{ i
   // Access control
   if (user.role === "EMPLOYEE" && form.employeeId !== user.id) notFound();
 
-  const canEditPreTrip = ["DRAFT", "PRE_REJECTED"].includes(form.status) && form.employeeId === user.id;
-  const canEditPostTrip = ["POST_DRAFT", "POST_REJECTED"].includes(form.status) && form.employeeId === user.id;
+  const isDev = process.env.NEXT_PUBLIC_DEV_TOOLS === "true";
+  const canEditPreTrip = (isDev || ["DRAFT", "PRE_REJECTED"].includes(form.status)) && form.employeeId === user.id;
+  const canEditPostTrip = (isDev || ["POST_DRAFT", "POST_REJECTED"].includes(form.status)) && form.employeeId === user.id;
   const canViewPdf = form.status === "POST_APPROVED";
 
   return (

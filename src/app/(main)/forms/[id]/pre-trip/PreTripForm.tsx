@@ -258,13 +258,15 @@ export function PreTripForm({ form, user, rates, isReadOnly }: Props) {
             >
               🇺🇸 BGP Holding (US) LLC
             </button>
-            <button
-              type="button"
-              onClick={() => setEntity("TH")}
-              className={`px-4 py-1.5 text-sm font-medium transition-colors ${entity === "TH" ? "bg-blue-600 text-white" : "bg-white text-blue-700 hover:bg-blue-50"}`}
-            >
-              🇹🇭 B.Grimm Power PCL
-            </button>
+            {process.env.NEXT_PUBLIC_SHOW_TH_ENTITY === "true" && (
+              <button
+                type="button"
+                onClick={() => setEntity("TH")}
+                className={`px-4 py-1.5 text-sm font-medium transition-colors ${entity === "TH" ? "bg-blue-600 text-white" : "bg-white text-blue-700 hover:bg-blue-50"}`}
+              >
+                🇹🇭 B.Grimm Power PCL
+              </button>
+            )}
           </div>
           <span className="text-xs text-blue-600">
             {isUS ? "USD amounts, city-based per diem, no FX conversion" : "Local currency → THB via BOT FX rate, area-based per diem"}

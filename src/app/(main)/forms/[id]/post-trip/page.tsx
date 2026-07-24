@@ -19,12 +19,14 @@ export default async function PostTripPage({ params }: { params: Promise<{ id: s
   if (!form) notFound();
   if (form.employeeId !== user.id) notFound();
 
-  // Only accessible when pre-approved or post phases
-  if (!["PRE_APPROVED", "POST_DRAFT", "POST_SUBMITTED", "POST_APPROVED", "POST_REJECTED"].includes(form.status)) {
+  const isDev = process.env.NEXT_PUBLIC_DEV_TOOLS === "true";
+
+  // Only accessible when pre-approved or post phases (bypass in dev)
+  if (!isDev && !["PRE_APPROVED", "POST_DRAFT", "POST_SUBMITTED", "POST_APPROVED", "POST_REJECTED"].includes(form.status)) {
     redirect(`/forms/${form.id}`);
   }
 
-  const isReadOnly = !["PRE_APPROVED", "POST_DRAFT", "POST_REJECTED"].includes(form.status);
+  const isReadOnly = !isDev && !["PRE_APPROVED", "POST_DRAFT", "POST_REJECTED"].includes(form.status);
   const rates = await prisma.perDiemRate.findMany();
 
   return <PostTripForm form={form as any} user={user as any} rates={rates as any} isReadOnly={isReadOnly} />;
